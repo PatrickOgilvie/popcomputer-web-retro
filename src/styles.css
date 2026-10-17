@@ -1,0 +1,30 @@
+@import "tailwindcss";
+
+/*
+ * Pages are styled with Tailwind utilities on the default palette. The only
+ * global rules are document basics and the layering contract:
+ *   z-10  sticky application header
+ *   z-40  modal backdrop
+ *   z-50  popups (menus, dialogs)
+ */
+
+:root {
+  color-scheme: light dark;
+}
+
+html {
+  min-width: 320px;
+  @apply bg-zinc-50 text-zinc-950 antialiased dark:bg-zinc-950 dark:text-zinc-50;
+}
+
+body {
+  /* Lets iOS dialog backdrops cover the visual viewport after scrolling. */
+  position: relative;
+  min-width: 320px;
+  margin: 0;
+}
+
+/* Popups portal outside #app, so its own stacking context stays beneath them. */
+#app {
+  isolation: isolate;
+}
