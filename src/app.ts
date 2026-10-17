@@ -40,11 +40,15 @@ export const web = setupWeb(new Hono<Env>(), {
   ),
   database: (c) => createDb(c.env.DB),
   schema,
-  // Each record a path names, and who may load it: another member's record
-  // is the 404 a missing one is, so no action has to check.
+  // Each record a path names, and who may load it.
   bindings: {
-    project: routeBinding(schema.projects, { ownedBy: 'userId' }),
-    publicProject: routeBinding(schema.projects, { publicWhen: { visibility: 'public' } }),
+    // A team loads only once its membership guard (src/memberships.ts) has
+    // read it: a stranger gets the guard's 404.
+    team: routeBinding(schema.teams, { guarded: true }),
+    // The rest load only under their team, so its guard decides for them too.
+    member: routeBinding(schema.memberships, { scope: { team: { foreignKey: 'teamId' } } }),
+    retro: routeBinding(schema.retros, { scope: { team: { foreignKey: 'teamId' } } }),
+    note: routeBinding(schema.notes, { scope: { retro: { foreignKey: 'retroId' } } }),
     session: routeBinding(schema.session, { ownedBy: 'userId' }),
   },
   pages,

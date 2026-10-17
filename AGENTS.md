@@ -13,7 +13,7 @@ Each is declared once, and everything else derives from it:
 - `src/paths.ts`: every URL. Build links with `href(paths.x, params)`.
 - `src/schema.ts`: the D1 tables (`src/auth-schema.ts` holds Better Auth's).
 - `src/forms.ts`: the schemas forms are validated with, which type the forms
-  in React too (`FormInput<typeof ProjectForm>`).
+  in React too (`FormInput<typeof NoteForm>`).
 - `src/pages.ts`: each page's props, taken from the tables' columns.
 - `src/env.ts`: the Worker's vars and secrets, each with its schema; the
   bindings type derives from it.
@@ -33,18 +33,19 @@ Each is declared once, and everything else derives from it:
    to `components` in `src/main.tsx`; a page without one is a type error.
 6. Test it in `test/` through the app, as the tests there do.
 
-The projects pages are an example to copy and learn from: a list, a form
-that creates, a page that shows, edits and deletes one, and a public page.
-Build what the user asks for beside them the same way, and remove them when
-the user no longer wants them.
+The team and retro pages are examples to copy and learn from: a membership
+guard (`src/memberships.ts`) for every route under `/teams/{team:slug}`,
+with `can(permission)` in each action that needs a role; records scoped
+under their team; and rules concurrent requests could break (vote budgets,
+phases, one owner) held by triggers in `migrations/0001_retro_rules.sql`.
 
-A route that reads a record names it in its path (`/projects/{project}`)
+A route that reads a record, such as a project, names it in its path (`/projects/{project}`)
 and reads it with `bound('project')`. Add its table to `bindings` in
 `src/app.ts` with who may load it, and never check that in the action:
 `routeBinding(schema.projects, { ownedBy: 'userId' })` for the signed-in
 member's own records, whose others are the 404 a missing record is;
 `{ publicWhen: { visibility: 'public' } }` for a page anyone may see, under
-a binding of its own (`publicProject` shows the table bound twice);
+a binding of its own, the table bound twice;
 `{ public: true }` for any record, to anyone. A record that lives inside
 another, such as a task in a project, goes under it in the path
 (`/projects/{project}/tasks/{task}`) and says

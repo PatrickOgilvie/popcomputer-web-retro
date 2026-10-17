@@ -33,7 +33,7 @@ export default function Login() {
       <Head title="Sign in" />
       <AuthShell
         title="Sign in"
-        description="Pick up where you left off with your projects and devices."
+        description="Pick up where your team left off."
         alternatePrompt="New here?"
         alternateHref={paths.register}
         alternateLabel="Create an account"

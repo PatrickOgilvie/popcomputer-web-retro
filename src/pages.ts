@@ -2,17 +2,56 @@
 // with: a column the schema does not name never reaches the browser.
 import { Schema as S, Struct } from 'effect'
 import { tableSchema } from '@popcomputer/web/schema'
+import { Role } from './forms'
 import * as schema from './schema'
 
-export const ProjectSummary = tableSchema(schema.projects).mapFields(
-  Struct.pick(['id', 'name', 'description', 'visibility', 'updatedAt'])
+const teamFields = tableSchema(schema.teams)
+const retroFields = tableSchema(schema.retros)
+const noteFields = tableSchema(schema.notes)
+
+export const Team = teamFields.mapFields(Struct.pick(['id', 'slug', 'name', 'createdAt']))
+
+export const TeamSummary = teamFields.mapFields((fields) => ({
+  ...Struct.pick(fields, ['id', 'slug', 'name']),
+  role: Role,
+  memberCount: S.Number,
+  activeRetros: S.Number,
+}))
+
+export const RetroSummary = retroFields.mapFields((fields) => ({
+  ...Struct.pick(fields, ['id', 'title', 'phase', 'createdAt', 'closedAt']),
+  noteCount: S.Number,
+}))
+
+export const Retro = retroFields.mapFields(
+  Struct.pick(['id', 'title', 'phase', 'votesPerPerson', 'createdAt', 'closedAt'])
 )
 
-export const Project = tableSchema(schema.projects).mapFields(
-  Struct.pick(['id', 'name', 'description', 'visibility', 'createdAt', 'updatedAt'])
-)
+/** An action item from any of the team's retros, with the retro it came from. */
+export const ActionItem = noteFields.mapFields((fields) => ({
+  ...Struct.pick(fields, ['id', 'body', 'doneAt', 'createdAt']),
+  retro: S.Struct({ id: S.String, title: S.String }),
+}))
 
-export const PublicProject = tableSchema(schema.projects).mapFields(Struct.pick(['id', 'name', 'description', 'updatedAt']))
+/**
+ * A note as the board shows it. Never its author: the board is anonymous.
+ * Another member's text is null while notes are being written, and the vote
+ * totals are null while voting, so neither can sway anyone early.
+ */
+export const BoardNote = noteFields.mapFields((fields) => ({
+  ...Struct.pick(fields, ['id', 'column', 'doneAt', 'createdAt']),
+  body: S.NullOr(S.String),
+  mine: S.Boolean,
+  votes: S.NullOr(S.Number),
+  myVotes: S.Number,
+}))
+
+/** A member, as the team's other members see them. */
+export const Member = tableSchema(schema.memberships).mapFields((fields) => ({
+  ...Struct.pick(fields, ['userId', 'role', 'createdAt']),
+  name: S.String,
+  email: S.String,
+}))
 
 // A signed-in device: never its token, which only Better Auth reads.
 export const Session = tableSchema(schema.session).mapFields((fields) => ({
@@ -23,17 +62,35 @@ export const Session = tableSchema(schema.session).mapFields((fields) => ({
 export const pages = {
   'Auth/Login': S.Struct({}),
   'Auth/Register': S.Struct({}),
-  Dashboard: S.Struct({
-    recentProjects: S.Array(ProjectSummary),
-    projectCount: S.Number,
-    publicProjectCount: S.Number,
-    sessionCount: S.Number,
-    thisDevice: tableSchema(schema.session).mapFields(Struct.pick(['userAgent', 'createdAt'])),
+  Dashboard: S.Struct({ teams: S.Array(TeamSummary) }),
+  'Teams/Show': S.Struct({
+    team: Team,
+    role: Role,
+    memberCount: S.Number,
+    retros: S.Array(RetroSummary),
+    openActions: S.Array(ActionItem),
   }),
-  'Projects/Index': S.Struct({ projects: S.Array(ProjectSummary) }),
-  'Projects/Create': S.Struct({}),
-  'Projects/Show': S.Struct({ project: Project }),
-  'Projects/Edit': S.Struct({ project: Project }),
-  'Projects/Public': S.Struct({ project: PublicProject }),
+  'Teams/Members': S.Struct({
+    team: Team,
+    role: Role,
+    you: S.String,
+    members: S.Array(Member),
+    /** The team's current invite link, for those who may invite; null for the rest. */
+    invite: S.NullOr(tableSchema(schema.invites).mapFields(Struct.pick(['token', 'expiresAt']))),
+  }),
+  'Teams/Join': S.Struct({
+    team: teamFields.mapFields(Struct.pick(['name', 'slug'])),
+    memberCount: S.Number,
+    alreadyMember: S.Boolean,
+    token: S.String,
+  }),
+  'Teams/InviteExpired': S.Struct({}),
+  'Retros/Show': S.Struct({
+    team: teamFields.mapFields(Struct.pick(['slug', 'name'])),
+    retro: Retro,
+    role: Role,
+    notes: S.Array(BoardNote),
+    votesLeft: S.Number,
+  }),
   'Sessions/Index': S.Struct({ sessions: S.Array(Session) }),
 }

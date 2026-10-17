@@ -7,12 +7,12 @@ import Login from './pages/Auth/Login'
 import Register from './pages/Auth/Register'
 import Dashboard from './pages/Dashboard'
 import ErrorPage from './pages/Errors/Error'
-import CreateProject from './pages/Projects/Create'
-import EditProject from './pages/Projects/Edit'
-import ProjectsIndex from './pages/Projects/Index'
-import PublicProject from './pages/Projects/Public'
-import ShowProject from './pages/Projects/Show'
+import ShowRetro from './pages/Retros/Show'
 import SessionsIndex from './pages/Sessions/Index'
+import InviteExpired from './pages/Teams/InviteExpired'
+import Join from './pages/Teams/Join'
+import Members from './pages/Teams/Members'
+import ShowTeam from './pages/Teams/Show'
 import { appTitle } from './title'
 
 // Every registered page's component: a page without one is a type error.
@@ -20,11 +20,11 @@ const components: { readonly [Name in PageName]: WebPage<Name> } = {
   'Auth/Login': Login,
   'Auth/Register': Register,
   Dashboard,
-  'Projects/Index': ProjectsIndex,
-  'Projects/Create': CreateProject,
-  'Projects/Show': ShowProject,
-  'Projects/Edit': EditProject,
-  'Projects/Public': PublicProject,
+  'Teams/Show': ShowTeam,
+  'Teams/Members': Members,
+  'Teams/Join': Join,
+  'Teams/InviteExpired': InviteExpired,
+  'Retros/Show': ShowRetro,
   'Sessions/Index': SessionsIndex,
 }
 

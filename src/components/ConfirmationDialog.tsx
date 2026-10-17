@@ -6,8 +6,11 @@ import { buttonClassName } from '~/components/button'
 interface ConfirmationDialogProps {
   readonly open: boolean
   readonly onOpenChange: (open: boolean) => void
-  /** Button that opens the dialog; focus returns to it when the dialog closes. */
-  readonly trigger: ReactElement
+  /**
+   * Button that opens the dialog; focus returns to it when the dialog closes.
+   * Without one, `open` opens it, and focus returns where it was.
+   */
+  readonly trigger?: ReactElement
   readonly title: string
   readonly description: string
   readonly confirmLabel: string
@@ -40,7 +43,7 @@ export default function ConfirmationDialog({
         if (!busy) onOpenChange(nextOpen)
       }}
     >
-      <AlertDialog.Trigger render={trigger} />
+      {trigger ? <AlertDialog.Trigger render={trigger} /> : null}
       <AlertDialog.Portal>
         <AlertDialog.Backdrop className="fixed inset-0 z-40 min-h-dvh bg-zinc-950/40 supports-[-webkit-touch-callout:none]:absolute dark:bg-black/60" />
         <AlertDialog.Popup

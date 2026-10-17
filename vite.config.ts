@@ -6,11 +6,15 @@ import tailwindcss from '@tailwindcss/vite'
 
 import packageJson from './package.json'
 import { cloudflareName } from './scripts/app-name'
+import { reloadWorkerModules } from './scripts/reload-worker'
 
 export default defineConfig(({ command, isPreview }) => ({
   plugins: [
     tailwindcss(),
     react(),
+    // Before the Cloudflare plugin, whose Worker entry would otherwise take a
+    // hot update that registers the routes twice (scripts/reload-worker.ts).
+    reloadWorkerModules(resolve(import.meta.dirname, 'src/worker.ts')),
     // Runs the Worker inside Vite's dev server, so the pages and their scripts
     // share one address. Only the dev server runs it in development; a build
     // keeps wrangler.jsonc's production vars. In development the Worker takes

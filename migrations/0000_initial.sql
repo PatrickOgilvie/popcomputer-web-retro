@@ -1,18 +1,81 @@
-CREATE TABLE `projects` (
-	`id` text PRIMARY KEY NOT NULL,
-	`user_id` text NOT NULL,
-	`name` text NOT NULL,
-	`description` text,
-	`visibility` text DEFAULT 'private' NOT NULL,
+CREATE TABLE `invites` (
+	`token` text PRIMARY KEY NOT NULL,
+	`team_id` text NOT NULL,
+	`created_by` text,
+	`expires_at` integer NOT NULL,
 	`created_at` integer NOT NULL,
-	`updated_at` integer NOT NULL,
-	FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade,
-	CONSTRAINT "projects_name_length" CHECK(length("projects"."name") BETWEEN 1 AND 100),
-	CONSTRAINT "projects_description_length" CHECK("projects"."description" IS NULL OR length("projects"."description") <= 500),
-	CONSTRAINT "projects_visibility" CHECK("projects"."visibility" IN ('private', 'public'))
+	FOREIGN KEY (`team_id`) REFERENCES `teams`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`created_by`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE set null
 );
 --> statement-breakpoint
-CREATE INDEX `projects_user_updated_idx` ON `projects` (`user_id`,`updated_at`);--> statement-breakpoint
+CREATE INDEX `invites_team_idx` ON `invites` (`team_id`,`expires_at`);--> statement-breakpoint
+CREATE TABLE `memberships` (
+	`team_id` text NOT NULL,
+	`user_id` text NOT NULL,
+	`role` text DEFAULT 'member' NOT NULL,
+	`created_at` integer NOT NULL,
+	PRIMARY KEY(`team_id`, `user_id`),
+	FOREIGN KEY (`team_id`) REFERENCES `teams`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade,
+	CONSTRAINT "memberships_role" CHECK("memberships"."role" IN ('owner', 'admin', 'member'))
+);
+--> statement-breakpoint
+CREATE INDEX `memberships_user_idx` ON `memberships` (`user_id`);--> statement-breakpoint
+CREATE TABLE `notes` (
+	`id` text PRIMARY KEY NOT NULL,
+	`retro_id` text NOT NULL,
+	`author_id` text,
+	`board_column` text NOT NULL,
+	`body` text NOT NULL,
+	`done_at` integer,
+	`created_at` integer NOT NULL,
+	FOREIGN KEY (`retro_id`) REFERENCES `retros`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`author_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE set null,
+	CONSTRAINT "notes_body_length" CHECK(length("notes"."body") BETWEEN 1 AND 500),
+	CONSTRAINT "notes_column" CHECK("notes"."board_column" IN ('went_well', 'to_improve', 'action')),
+	CONSTRAINT "notes_only_actions_are_done" CHECK("notes"."board_column" = 'action' OR "notes"."done_at" IS NULL)
+);
+--> statement-breakpoint
+CREATE INDEX `notes_retro_idx` ON `notes` (`retro_id`,`created_at`);--> statement-breakpoint
+CREATE TABLE `retros` (
+	`id` text PRIMARY KEY NOT NULL,
+	`team_id` text NOT NULL,
+	`title` text NOT NULL,
+	`phase` text DEFAULT 'collecting' NOT NULL,
+	`votes_per_person` integer DEFAULT 3 NOT NULL,
+	`created_by` text,
+	`created_at` integer NOT NULL,
+	`closed_at` integer,
+	FOREIGN KEY (`team_id`) REFERENCES `teams`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`created_by`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE set null,
+	CONSTRAINT "retros_title_length" CHECK(length("retros"."title") BETWEEN 1 AND 100),
+	CONSTRAINT "retros_phase" CHECK("retros"."phase" IN ('collecting', 'voting', 'discussing', 'closed')),
+	CONSTRAINT "retros_votes_per_person" CHECK("retros"."votes_per_person" BETWEEN 1 AND 10)
+);
+--> statement-breakpoint
+CREATE INDEX `retros_team_created_idx` ON `retros` (`team_id`,`created_at`);--> statement-breakpoint
+CREATE TABLE `teams` (
+	`id` text PRIMARY KEY NOT NULL,
+	`slug` text NOT NULL,
+	`name` text NOT NULL,
+	`created_at` integer NOT NULL,
+	CONSTRAINT "teams_name_length" CHECK(length("teams"."name") BETWEEN 1 AND 60)
+);
+--> statement-breakpoint
+CREATE UNIQUE INDEX `teams_slug_unique` ON `teams` (`slug`);--> statement-breakpoint
+CREATE TABLE `votes` (
+	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`retro_id` text NOT NULL,
+	`note_id` text NOT NULL,
+	`user_id` text NOT NULL,
+	`created_at` integer NOT NULL,
+	FOREIGN KEY (`retro_id`) REFERENCES `retros`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`note_id`) REFERENCES `notes`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade
+);
+--> statement-breakpoint
+CREATE INDEX `votes_retro_user_idx` ON `votes` (`retro_id`,`user_id`);--> statement-breakpoint
+CREATE INDEX `votes_note_idx` ON `votes` (`note_id`);--> statement-breakpoint
 CREATE TABLE `account` (
 	`id` text PRIMARY KEY NOT NULL,
 	`account_id` text NOT NULL,

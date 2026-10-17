@@ -12,13 +12,13 @@ interface LayoutProps {
 }
 
 const primaryNavigation = [
-  { label: 'Dashboard', href: paths.dashboard },
-  { label: 'Projects', href: paths.projects },
-  { label: 'Sessions', href: paths.sessions },
+  { label: 'Teams', href: paths.dashboard },
+  { label: 'Devices', href: paths.sessions },
 ] as const
 
 function isActivePath(currentPath: string, href: string): boolean {
-  if (href === '/') return currentPath === href
+  // Teams lists the member's teams, and every page inside one is under it.
+  if (href === '/') return currentPath === href || currentPath.startsWith('/teams/')
   return currentPath === href || currentPath.startsWith(`${href}/`)
 }
 

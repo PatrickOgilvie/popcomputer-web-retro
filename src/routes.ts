@@ -1,18 +1,31 @@
 import { action, render, RequireAuthLayer, RequireGuestLayer } from '@popcomputer/web/effect'
 import { betterAuthLogoutAction } from '@popcomputer/web/auth'
 import { signIn, signUp } from './actions/auth'
-import { showDashboard } from './actions/dashboard'
 import {
-  createProject,
-  deleteProject,
-  editProject,
-  listProjects,
-  showProject,
-  showPublicProject,
-  updateProject,
-} from './actions/projects'
+  addNote,
+  changePhase,
+  createRetro,
+  deleteNote,
+  deleteRetro,
+  markDone,
+  showRetro,
+  unvote,
+  vote,
+} from './actions/retros'
 import { listSessions, revokeOtherSessions, revokeSession } from './actions/sessions'
+import {
+  acceptInvite,
+  changeRole,
+  createTeam,
+  listMembers,
+  newInvite,
+  removeMember,
+  showDashboard,
+  showInvite,
+  showTeam,
+} from './actions/teams'
 import { routes } from './app'
+import { RequireMember } from './memberships'
 import { paths } from './paths'
 
 routes
@@ -24,19 +37,34 @@ routes
 
 routes.post(paths.logout, betterAuthLogoutAction({ redirectTo: paths.login }))
 
-// Anyone may see a project its owner made public.
-routes.get(paths.publicProject, showPublicProject)
-
 routes
   .provide(RequireAuthLayer)
   .get(paths.dashboard, showDashboard)
-  .get(paths.projects, listProjects)
-  .get(paths.newProject, action(render('Projects/Create')))
-  .post(paths.projects, createProject, { form: paths.newProject })
-  .get(paths.project, showProject)
-  .get(paths.editProject, editProject)
-  .put(paths.project, updateProject, { form: paths.editProject })
-  .delete(paths.project, deleteProject)
+  .post(paths.teams, createTeam, { form: paths.dashboard })
+  // A guest who opens an invite link signs in first, then comes back to it.
+  .get(paths.join, showInvite)
+  .post(paths.join, acceptInvite)
   .get(paths.sessions, listSessions)
   .delete(paths.otherSessions, revokeOtherSessions)
   .delete(paths.session, revokeSession, { form: paths.sessions })
+
+// Everything inside a team is its members' alone: the guard answers anyone
+// else with the 404 a missing team gets, before any of these actions runs.
+routes
+  .prefix('/teams/{team:slug}')
+  .provide(RequireAuthLayer)
+  .provide(RequireMember)
+  .get(paths.team, showTeam)
+  .get(paths.teamMembers, listMembers)
+  .put(paths.teamMember, changeRole, { form: paths.teamMembers })
+  .delete(paths.teamMember, removeMember, { form: paths.teamMembers })
+  .post(paths.teamInvite, newInvite, { form: paths.teamMembers })
+  .post(paths.retros, createRetro, { form: paths.team })
+  .get(paths.retro, showRetro)
+  .delete(paths.retro, deleteRetro, { form: paths.retro })
+  .put(paths.retroPhase, changePhase, { form: paths.retro })
+  .post(paths.notes, addNote, { form: paths.retro })
+  .delete(paths.note, deleteNote, { form: paths.retro })
+  .post(paths.noteVotes, vote, { form: paths.retro })
+  .delete(paths.noteVotes, unvote, { form: paths.retro })
+  .put(paths.noteDone, markDone, { form: paths.retro })

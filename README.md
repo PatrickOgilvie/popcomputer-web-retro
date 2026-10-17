@@ -1,37 +1,33 @@
 <img src="src/assets/popcomputer.png" alt="Popcomputer" width="374" height="69">
 
-# @popcomputer/web demo
+# Team retros on @popcomputer/web
 
-A complete application on @popcomputer/web, to start yours from.
+An example application made from the
+[template](https://github.com/PatrickOgilvie/popcomputer-web-demo): teams
+run retrospectives together. Everyone writes notes without seeing anyone
+else's, spends a few votes, and the team talks the top notes through and
+keeps its action items until they're done.
 
 React pages served by Inertia from a Cloudflare Worker, with Effect actions,
 D1 and Better Auth, built on
 [@popcomputer/web](https://github.com/PatrickOgilvie/popcomputer-web). Its
 [README](https://github.com/PatrickOgilvie/popcomputer-web#readme) explains
-each part; this repository shows them working together. Use it as a
-template, or deploy it as it is.
-
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/PatrickOgilvie/popcomputer-web-demo)
+each part; this repository shows them working together.
 
 ```ts
-// src/actions/projects.ts
-export const updateProject = action(
-  Effect.gen(function* () {
-    // Only its owner's: the binding is ownedBy 'userId', so another member's is a 404.
-    const project = yield* bound('project')
-    const input = yield* validateRequest(ProjectForm)
-    const updatedAt = DateTime.toDateUtc(yield* DateTime.now)
+// src/memberships.ts: every route under /teams/{team:slug} is provided it
+export const RequireMember = guard(CurrentMember, Effect.gen(function* () {
+  const auth = yield* authorize()
+  const team = yield* bound('team')
+  const [membership] = yield* dbQuery((db) =>
+    db.select().from(memberships).where(and(eq(memberships.teamId, team.id), eq(memberships.userId, auth.user.id)))
+  )
 
-    yield* dbMutation((db) =>
-      db.update(projects)
-        .set({ ...input, updatedAt })
-        .where(and(eq(projects.id, project.id), eq(projects.userId, project.userId)))
-    )
-    yield* flash('success', 'Project saved.')
+  // Not a member: the same 404 as a team that doesn't exist.
+  if (membership === undefined) return yield* notFound('Team')
 
-    return yield* redirect(paths.project, { project: project.id })
-  })
-)
+  return CurrentMember.of({ ...membership, team })
+}))
 ```
 
 ## Contents
@@ -42,50 +38,78 @@ export const updateProject = action(
 
 ## What it does
 
-- **Accounts.** Register, sign in and sign out through Better Auth. Attempts
-  are limited per address by Cloudflare's Rate Limiting binding and per
-  account in D1, and a daily cron clears the counts.
-- **Projects.** Create, edit and delete projects only their owner can see.
-  Another member's project is the same 404 as a missing one.
-- **A public page.** Anyone can read a project its owner made public, at
-  `/showcase/projects/{id}`, until the next request after it is made private.
-- **Signed-in devices.** List the devices signed in to the account, and sign
-  any other one, or all of them, out.
+- **Teams with roles.** Whoever starts a team owns it. The owner and admins
+  run retros and invite people; members write notes and vote. Only the owner
+  makes someone an admin.
+- **Invite links.** One link per team brings anyone who signs in in as a
+  member, for a week, or until a new link replaces it. A guest who opens one
+  signs in first and comes back to it.
+- **A retro in four phases.** Writing notes, voting, discussing, closed: the
+  owner or an admin moves it along.
+- **Notes hidden while they're written.** Went well, to improve, actions.
+  Until voting starts, everyone sees their own notes and blank cards for the
+  rest; no note ever shows its author.
+- **Dot voting.** Each member spends the retro's votes, more than one on a
+  note if they like. The totals stay hidden until the discussion, then the
+  board sorts by them.
+- **Action items that last.** Actions agreed in a retro wait on the team
+  page until someone ticks them off.
+- **A live board.** It refreshes every three seconds while the retro is open.
 
-Each page past sign-in, and the public project page, ends with an "Under the
-hood" panel naming the action that answers it and what the framework
-guarantees there.
+Each page ends with an "Under the hood" panel naming the action that answers
+it and what the framework guarantees there.
 
 ## How it's built
 
-- **Every name is declared once, and the rest derives from it.** A renamed
-  column, prop or path placeholder is a type error wherever it is used:
+- **A role belongs to a membership.** `memberships` holds each person's role
+  in each team, so the owner of one team can be a member of another. A guard
+  (`src/memberships.ts`) reads it for every route under
+  `/teams/{team:slug}`, answering anyone else with the 404 a missing team
+  gets, and each action states the permission it needs:
+
+  ```ts
+  // src/actions/retros.ts
+  export const changePhase = action(Effect.gen(function* () {
+    const member = yield* can('retros.run') // a 403 for a member
+    const retro = yield* bound('retro')     // only this team's retros load
+    // ...
+  }))
+  ```
+
+- **Records load only under their team.** `retro` is scoped to `team`, and
+  `note` to `retro`, so another team's ids under this team's address are 404s,
+  and the team's guard decides for all of them. The team's own binding says
+  `guarded: true`: it loads only once the guard has read it.
+
+- **The rules concurrent clicks could break are the database's.** Triggers in
+  `migrations/0001_retro_rules.sql` hold each member to the vote budget, take
+  votes only while voting and notes only in a phase open for their column,
+  and keep each team to one owner. Each refusal is shown by its name with
+  `constraintFieldErrors`.
+
+- **What a member mustn't see never leaves the server.** While notes are
+  written, another member's note reaches the page with its text as `null`,
+  and no note carries its author: the page's schema in `src/pages.ts` has no
+  author field, so none can be sent.
+
+- **Three forms, three error bags.** Each column's form names an Inertia
+  error bag, so a refusal shows under the column it came from.
+
+- **A team and its owner are written together**, in one `dbBatch`; joining
+  through an invite inserts the membership only while the invite is live, in
+  the insert itself (`rowOf` from `@popcomputer/web/drizzle`).
+
+- **Every name is declared once, and the rest derives from it:**
 
   | File | Declares |
   | --- | --- |
   | `src/paths.ts` | Every URL. Actions redirect to them and React links to them with `href`. |
-  | `src/schema.ts` | The D1 tables, with their limits as `CHECK` constraints. |
-  | `src/forms.ts` | The schemas forms are validated with, which type the forms in React too. |
-  | `src/pages.ts` | Each page's props, taken from the tables' columns. A column a page doesn't name never reaches the browser. |
-  | `src/env.ts` | The Worker's vars and secrets, with their schemas. The Worker, `bun run dev`, `bun run env:check` and `bun run deploy` check them. |
+  | `src/schema.ts` | The D1 tables: teams, memberships, invites, retros, notes and votes. |
+  | `src/forms.ts` | The schemas forms are validated with, and the roles, phases and columns. |
+  | `src/pages.ts` | Each page's props. A column a page doesn't name never reaches the browser. |
+  | `src/memberships.ts` | The membership guard, and what each role may do. |
   | `src/app.ts` | `setupWeb`: rendering, D1, Better Auth, route model binding, flash messages and the error page. |
   | `src/routes.ts` | Every route and the action that answers it. |
-
-- **An action reads its record from the URL** rather than querying for it,
-  and its binding says who may load it, so no action checks: another
-  member's project is the 404 a missing one is, from the lookup's own query.
-
-  ```ts
-  // src/app.ts
-  bindings: {
-    project: routeBinding(schema.projects, { ownedBy: 'userId' }),
-    publicProject: routeBinding(schema.projects, { publicWhen: { visibility: 'public' } }),
-    session: routeBinding(schema.session, { ownedBy: 'userId' }),
-  },
-  ```
-
-- **A failed form goes back to its page** with its errors beside the fields,
-  and the page keeps everything it showed.
 
 The rest of the tree:
 
@@ -261,9 +285,11 @@ bun run db:seed
 ```
 
 It deletes everything in the local database, applies the migrations to a
-new one, then runs `src/seed.ts`. The template's seed creates a member to
-sign in as, `ada@example.com` with the password `at least twelve characters`,
-with a private project and a public one. A seed exports a function that
+new one, then runs `src/seed.ts`. Its seed creates a member to sign in as,
+`ada@example.com` with the password `at least twelve characters`, who owns
+the Platform team (`grace@`, `alan@` and `katherine@example.com` are in it,
+with the same password) with last sprint's retro closed and this sprint's
+open for voting, and who's a member of a second team. A seed exports a function that
 takes the database and the Worker's bindings, and inserts with Drizzle, so
 `bun run check` reports a seed a schema change has broken:
 
@@ -274,7 +300,7 @@ export async function seed(db: Database, env: Bindings): Promise<void> {
   const auth = createAuth({ db, secret: env.BETTER_AUTH_SECRET, baseURL: 'http://localhost' })
   const { user } = await auth.api.signUpEmail({ body: { ...seedMember } })
 
-  await db.insert(projects).values([{ userId: user.id, name: 'Apollo' }])
+  await db.insert(teams).values({ id: 'team-platform', slug: 'platform-7k2m', name: 'Platform' })
 }
 ```
 
@@ -427,7 +453,7 @@ It builds the app, uploads it as a version that takes none of the live
 app's requests, checks it answers, and prints its address, such as
 `https://1a2b3c4d-my-app.my-subdomain.workers.dev`. `bun run deploy` makes
 the same code live. A preview runs on the live app's database and secrets:
-what someone does there, signing up or editing a project, they do to the
+what someone does there, signing up or writing a note, they do to the
 live app's data. It never applies migrations, so it says when the database
 on Cloudflare hasn't had one yet: pages that need it fail on the preview
 until a deploy applies it. The app has to be deployed once first, and it
