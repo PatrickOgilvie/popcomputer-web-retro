@@ -1,36 +1,63 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "popcomputer-web-demo",
-  "main": "src/worker.ts",
-  "compatibility_date": "2026-08-04",
-  "compatibility_flags": ["nodejs_compat"],
-  // The client bundle `bun run build` writes; the Worker answers everything else.
-  "assets": { "directory": "dist" },
-  // Each uploaded version answers at an address of its own: bun run deploy
-  // checks a new one there before it goes live, and bun run preview shares it.
-  "preview_urls": true,
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "popcomputer-web-demo-db",
-      "database_id": "00000000-0000-0000-0000-000000000000",
-      // Names the local database bun run dev and the db: scripts share, so it
-      // keeps its data when the first deploy writes the real id above. It's
-      // why wrangler calls the database on Cloudflare the "preview database"
-      // when it migrates or queries it there: that's still the live one. To
-      // develop against the live one ("remote": true), set this to its id.
-      "preview_database_id": "local",
-      "migrations_dir": "migrations"
-    }
-  ],
-  // Counts each client address's sign-in, sign-up and password calls, and
-  // each account's sign-ins, at Cloudflare's edge (auth.signInLimits).
-  "ratelimits": [
-    { "name": "SIGN_IN_LIMITER", "namespace_id": "1001", "simple": { "limit": 10, "period": 60 } }
-  ],
-  // Identifies the deploy, so the page cache starts each deploy empty.
-  "version_metadata": { "binding": "CF_VERSION_METADATA" },
-  // Clears the counts of failed sign-ins whose window has passed.
-  "triggers": { "crons": ["0 3 * * *"] },
-  "vars": { "ENVIRONMENT": "production" }
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "popcomputer-web-retro",
+	"main": "src/worker.ts",
+	"compatibility_date": "2026-08-04",
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	// The client bundle `bun run build` writes; the Worker answers everything else.
+	"assets": {
+		"directory": "dist"
+	},
+	// Each uploaded version answers at an address of its own: bun run deploy
+	// checks a new one there before it goes live, and bun run preview shares it.
+	"preview_urls": true,
+	// The example's own address on popcomputer.com's zone. To deploy a copy of
+	// your own, remove this, or name a domain of yours.
+	"routes": [
+		{
+			"pattern": "retro.web.popcomputer.com",
+			"custom_domain": true
+		}
+	],
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "popcomputer-web-retro-db",
+			"database_id": "edf151de-3975-40af-9aa1-94501f31aaba",
+			// Names the local database bun run dev and the db: scripts share, so it
+			// keeps its data when the first deploy writes the real id above. It's
+			// why wrangler calls the database on Cloudflare the "preview database"
+			// when it migrates or queries it there: that's still the live one. To
+			// develop against the live one ("remote": true), set this to its id.
+			"preview_database_id": "local",
+			"migrations_dir": "migrations"
+		}
+	],
+	// Counts each client address's sign-in, sign-up and password calls, and
+	// each account's sign-ins, at Cloudflare's edge (auth.signInLimits).
+	"ratelimits": [
+		{
+			"name": "SIGN_IN_LIMITER",
+			"namespace_id": "1003",
+			"simple": {
+				"limit": 10,
+				"period": 60
+			}
+		}
+	],
+	// Identifies the deploy, so the page cache starts each deploy empty.
+	"version_metadata": {
+		"binding": "CF_VERSION_METADATA"
+	},
+	// Clears the counts of failed sign-ins whose window has passed.
+	"triggers": {
+		"crons": [
+			"0 3 * * *"
+		]
+	},
+	"vars": {
+		"ENVIRONMENT": "production"
+	}
 }
