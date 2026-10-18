@@ -53,15 +53,8 @@ export const Member = tableSchema(schema.memberships).mapFields((fields) => ({
   email: S.String,
 }))
 
-// A signed-in device: never its token, which only Better Auth reads.
-export const Session = tableSchema(schema.session).mapFields((fields) => ({
-  ...Struct.pick(fields, ['id', 'ipAddress', 'userAgent', 'createdAt', 'updatedAt', 'expiresAt']),
-  current: S.Boolean,
-}))
-
 export const pages = {
   'Auth/Login': S.Struct({}),
-  'Auth/Register': S.Struct({}),
   Dashboard: S.Struct({ teams: S.Array(TeamSummary) }),
   'Teams/Show': S.Struct({
     team: Team,
@@ -92,5 +85,4 @@ export const pages = {
     notes: S.Array(BoardNote),
     votesLeft: S.Number,
   }),
-  'Sessions/Index': S.Struct({ sessions: S.Array(Session) }),
 }

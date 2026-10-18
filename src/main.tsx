@@ -4,11 +4,9 @@ import type { PageName } from '@popcomputer/web/effect'
 import type { WebPage } from '@popcomputer/web/react'
 import { createRoot } from 'react-dom/client'
 import Login from './pages/Auth/Login'
-import Register from './pages/Auth/Register'
 import Dashboard from './pages/Dashboard'
 import ErrorPage from './pages/Errors/Error'
 import ShowRetro from './pages/Retros/Show'
-import SessionsIndex from './pages/Sessions/Index'
 import InviteExpired from './pages/Teams/InviteExpired'
 import Join from './pages/Teams/Join'
 import Members from './pages/Teams/Members'
@@ -18,14 +16,12 @@ import { appTitle } from './title'
 // Every registered page's component: a page without one is a type error.
 const components: { readonly [Name in PageName]: WebPage<Name> } = {
   'Auth/Login': Login,
-  'Auth/Register': Register,
   Dashboard,
   'Teams/Show': ShowTeam,
   'Teams/Members': Members,
   'Teams/Join': Join,
   'Teams/InviteExpired': InviteExpired,
   'Retros/Show': ShowRetro,
-  'Sessions/Index': SessionsIndex,
 }
 
 const isPage = (name: string): name is PageName => name in components

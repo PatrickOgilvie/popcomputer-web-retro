@@ -63,8 +63,8 @@ a migration that has been applied. Tests migrate each test's own D1 database
 from `migrations/`.
 
 `bun run db:seed` deletes the local database's data, migrates a new one and
-runs `src/seed.ts`, whose member signs in as `ada@example.com` with the
-password `at least twelve characters`; keep the seed working when the schema
+runs `src/seed.ts`, which adds nothing here (each guest gets their teams
+and retros from `src/demo.ts` when they start the demo); keep the seed working when the schema
 changes, as `bun run check` type-checks it. `bun run db:reset` empties the
 local database. Both delete data, so without a terminal they stop and ask
 for `--yes`: pass it only when the user asked for the reset, and run

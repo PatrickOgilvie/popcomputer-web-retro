@@ -1,6 +1,6 @@
 import { Menu } from '@base-ui/react/menu'
-import { Link, router } from '@inertiajs/react'
-import { ChevronDown, LogOut, MonitorSmartphone } from 'lucide-react'
+import { router } from '@inertiajs/react'
+import { ChevronDown, LogOut } from 'lucide-react'
 import { paths } from '~/paths'
 
 interface AccountMenuProps {
@@ -11,7 +11,7 @@ interface AccountMenuProps {
 const itemClassName =
   'flex h-9 cursor-default items-center gap-2 rounded-md px-2 text-sm text-zinc-700 outline-none select-none data-highlighted:bg-zinc-100 data-highlighted:text-zinc-950 dark:text-zinc-300 dark:data-highlighted:bg-zinc-800 dark:data-highlighted:text-white [&_svg]:size-4 [&_svg]:text-zinc-500'
 
-/** Account summary with session management and sign-out. */
+/** Account summary with sign-out. */
 export default function AccountMenu({ displayName, email }: AccountMenuProps) {
   const initial = displayName.slice(0, 1).toUpperCase() || '?'
 
@@ -38,14 +38,6 @@ export default function AccountMenu({ displayName, email }: AccountMenuProps) {
               <p className="truncate text-sm text-zinc-500 dark:text-zinc-400">{email}</p>
             </div>
             <Menu.Separator className="my-1 h-px bg-zinc-200 dark:bg-zinc-800" />
-            <Menu.LinkItem
-              className={itemClassName}
-              closeOnClick
-              render={<Link href={paths.sessions} />}
-            >
-              <MonitorSmartphone aria-hidden="true" />
-              Signed-in devices
-            </Menu.LinkItem>
             <Menu.Item className={itemClassName} onClick={() => router.post(paths.logout)}>
               <LogOut aria-hidden="true" />
               Sign out

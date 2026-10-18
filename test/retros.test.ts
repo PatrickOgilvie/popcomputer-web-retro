@@ -2,12 +2,12 @@ import { describe, expect, test } from 'bun:test'
 import { href } from '@popcomputer/web/paths'
 import { readPage, type TestBrowser } from '@popcomputer/web/testing'
 import { paths } from '../src/paths'
-import { addNote, board, createRetro, createTeam, freshEnv, inviteToken, joinTeam, register, send, setPhase, visit } from './app'
+import { addNote, board, createRetro, createTeam, freshEnv, inviteToken, joinTeam, member, send, setPhase, visit } from './app'
 
 /** Ada runs a team with Grace in it, and a retro collecting notes. */
 async function retroWithTwo(votesPerPerson = 3) {
   const env = await freshEnv()
-  const ada = await register(env, 'Ada')
+  const ada = await member(env, 'Ada')
   const team = await createTeam(ada)
   const grace = await joinTeam(env, 'Grace', await inviteToken(ada, team))
   const retro = await createRetro(ada, team, { votesPerPerson })

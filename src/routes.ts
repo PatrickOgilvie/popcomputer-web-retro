@@ -1,6 +1,6 @@
 import { action, render, RequireAuthLayer, RequireGuestLayer } from '@popcomputer/web/effect'
 import { betterAuthLogoutAction } from '@popcomputer/web/auth'
-import { signIn, signUp } from './actions/auth'
+import { startDemo } from './actions/auth'
 import {
   addNote,
   changePhase,
@@ -12,7 +12,6 @@ import {
   unvote,
   vote,
 } from './actions/retros'
-import { listSessions, revokeOtherSessions, revokeSession } from './actions/sessions'
 import {
   acceptInvite,
   changeRole,
@@ -28,12 +27,11 @@ import { routes } from './app'
 import { RequireMember } from './memberships'
 import { paths } from './paths'
 
+// Nobody registers: the sign-in page starts the demo, as a guest.
 routes
   .provide(RequireGuestLayer)
   .get(paths.login, action(render('Auth/Login')))
-  .post(paths.login, signIn)
-  .get(paths.register, action(render('Auth/Register')))
-  .post(paths.register, signUp)
+  .post(paths.login, startDemo)
 
 routes.post(paths.logout, betterAuthLogoutAction({ redirectTo: paths.login }))
 
@@ -44,9 +42,6 @@ routes
   // A guest who opens an invite link signs in first, then comes back to it.
   .get(paths.join, showInvite)
   .post(paths.join, acceptInvite)
-  .get(paths.sessions, listSessions)
-  .delete(paths.otherSessions, revokeOtherSessions)
-  .delete(paths.session, revokeSession, { form: paths.sessions })
 
 // Everything inside a team is its members' alone: the guard answers anyone
 // else with the 404 a missing team gets, before any of these actions runs.

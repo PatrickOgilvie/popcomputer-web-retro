@@ -8,7 +8,7 @@ run retrospectives together. Everyone writes notes without seeing anyone
 else's, spends a few votes, and the team talks the top notes through and
 keeps its action items until they're done.
 
-**Live at [retro.web.popcomputer.com](https://retro.web.popcomputer.com).** Sign up, start a team, and share its invite link to run a retro together.
+**Live at [retro.web.popcomputer.com](https://retro.web.popcomputer.com).** Choose Start the demo: you’re signed in as a guest, with a team of your own and its retros, and no email or password. Share its invite link to run a retro with someone else.
 
 React pages served by Inertia from a Cloudflare Worker, with Effect actions,
 D1 and Better Auth, built on
@@ -57,6 +57,13 @@ export const RequireMember = guard(CurrentMember, Effect.gen(function* () {
 - **Action items that last.** Actions agreed in a retro wait on the team
   page until someone ticks them off.
 - **A live board.** It refreshes every three seconds while the retro is open.
+- **Guests, not accounts.** Start the demo signs a visitor in as a guest of
+  their own, through Better Auth's anonymous plugin, with a name such as
+  Curious Otter. Nobody registers, and there's no password. Each guest gets
+  a team with three teammates, last sprint's retro closed and this sprint's
+  waiting for their notes, and a second team they're a member of
+  (`src/demo.ts`). The daily Cron Trigger deletes guests after a week, with
+  the teams only they were in.
 
 Each page ends with an "Under the hood" panel naming the action that answers
 it and what the framework guarantees there.
@@ -201,38 +208,19 @@ the id.
 If the address shows portless's "404 - Not Found" page, the app isn't running:
 start it with `bun run dev`, whatever command that page suggests.
 
-To try a form from a terminal, post its fields with curl, which the app
-answers as a command-line client: a form that fails validation gets a 422
-with the errors as JSON, and a sign-up or sign-in a 303 to `/` with its
-session cookie, which curl keeps in `cookies.txt` (git ignores it). Send the
-`Origin` a browser would: Better Auth refuses a sign-up or sign-in without
-one, here as in production. Put your app's name in place of `my-app`. The
-example signs up `sam@example.com`, since `bun run db:seed` creates
-`ada@example.com`.
+To start the demo from a terminal, post to `/login` with curl, which the
+app answers as a command-line client: a 303 with the guest's session cookie,
+which curl keeps in `cookies.txt` (git ignores it). Send the `Origin` a
+browser would: Better Auth refuses a sign-in without one, here as in
+production. Put your app's name in place of `my-app`.
 
 ```bash
-curl -isS https://my-app.localhost/register -c cookies.txt \
-  -H 'Origin: https://my-app.localhost' \
-  --data-urlencode 'name=Sam' --data-urlencode 'email=sam@example.com' \
-  --data-urlencode 'password=at least twelve characters'
+curl -isS -X POST https://my-app.localhost/login -c cookies.txt \
+  -H 'Origin: https://my-app.localhost'
 curl -sS -b cookies.txt https://my-app.localhost/
 ```
 
-Signed in, the second command prints the dashboard's HTML page, with your name
-in the page data it carries; signed out, it prints the JSON 401. A browser that
-isn't signed in is sent from `/` to the sign-in page, which a browser's headers
-show: `curl -isS -A Mozilla/5.0 -H 'Accept: text/html' https://my-app.localhost/`
-answers 302 with `location: /login?redirect=%2F`.
-
-Signing in posts the email and password to `/login` the same way; a wrong
-password gets a 422.
-
-```bash
-curl -isS https://my-app.localhost/login -c cookies.txt \
-  -H 'Origin: https://my-app.localhost' \
-  --data-urlencode 'email=sam@example.com' \
-  --data-urlencode 'password=at least twelve characters'
-```
+Signed in, the second command prints the dashboard's HTML page, with the guest's teams in the page data it carries; signed out, it prints the JSON 401.
 
 Without the portless service, `bun run dev` asks for your password the first
 time it runs, and again after a restart. `PORTLESS=0 bun run dev` skips
@@ -287,22 +275,16 @@ bun run db:seed
 ```
 
 It deletes everything in the local database, applies the migrations to a
-new one, then runs `src/seed.ts`. Its seed creates a member to sign in as,
-`ada@example.com` with the password `at least twelve characters`, who owns
-the Platform team (`grace@`, `alan@` and `katherine@example.com` are in it,
-with the same password) with last sprint's retro closed and this sprint's
-open for voting, and who's a member of a second team. A seed exports a function that
+new one, then runs `src/seed.ts`, which here adds nothing: each guest who
+starts the demo gets their teams and retros from `src/demo.ts`, locally as
+on Cloudflare. A seed exports a function that
 takes the database and the Worker's bindings, and inserts with Drizzle, so
 `bun run check` reports a seed a schema change has broken:
 
 ```ts
 // src/seed.ts
-export async function seed(db: Database, env: Bindings): Promise<void> {
-  // Through Better Auth, as the sign-up form does, so the password signs in.
-  const auth = createAuth({ db, secret: env.BETTER_AUTH_SECRET, baseURL: 'http://localhost' })
-  const { user } = await auth.api.signUpEmail({ body: { ...seedMember } })
-
-  await db.insert(teams).values({ id: 'team-platform', slug: 'platform-7k2m', name: 'Platform' })
+export async function seed(db: Database): Promise<void> {
+  await db.insert(user).values({ id: 'seed-sam', name: 'Sam', email: 'sam@example.invalid', emailVerified: false })
 }
 ```
 

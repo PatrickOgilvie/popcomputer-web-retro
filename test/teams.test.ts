@@ -1,15 +1,15 @@
 import { describe, expect, test } from 'bun:test'
 import { href } from '@popcomputer/web/paths'
-import { readPage, testBrowser } from '@popcomputer/web/testing'
+import { readPage, testBrowser, type TestBrowser } from '@popcomputer/web/testing'
 import { paths } from '../src/paths'
-import { app, asksToSignIn, clockedEnv, createRetro, createTeam, freshEnv, inviteToken, joinTeam, register, send, visit } from './app'
+import { app, asksToSignIn, clockedEnv, createRetro, createTeam, freshEnv, inviteToken, joinTeam, member, send, visit } from './app'
 
-const members = async (browser: Awaited<ReturnType<typeof register>>, team: string) =>
+const members = async (browser: TestBrowser, team: string) =>
   (await readPage(await browser.request(href(paths.teamMembers, { team }), visit), 'Teams/Members')).props
 
 describe('teams', () => {
   test('starting one makes its starter the owner, and lists it', async () => {
-    const browser = await register(await freshEnv(), 'Ada')
+    const browser = await member(await freshEnv(), 'Ada')
     const res = await browser.request(paths.teams, send('POST', { name: 'Platform Squad!' }))
     const page = await readPage(await browser.follow(res), 'Teams/Show')
 
@@ -24,8 +24,8 @@ describe('teams', () => {
 
   test('a team is the same 404 as a missing one to anyone outside it', async () => {
     const env = await freshEnv()
-    const ada = await register(env, 'Ada')
-    const grace = await register(env, 'Grace')
+    const ada = await member(env, 'Ada')
+    const grace = await member(env, 'Grace')
     const team = await createTeam(ada)
     const retro = await createRetro(ada, team)
 
@@ -39,7 +39,7 @@ describe('teams', () => {
 
   test('another team’s retro under this team’s address is a 404', async () => {
     const env = await freshEnv()
-    const ada = await register(env, 'Ada')
+    const ada = await member(env, 'Ada')
     const first = await createTeam(ada, 'First')
     const second = await createTeam(ada, 'Second')
     const retro = await createRetro(ada, second)
@@ -52,10 +52,10 @@ describe('teams', () => {
 describe('invites', () => {
   test('a link brings someone in as a member, once', async () => {
     const env = await freshEnv()
-    const ada = await register(env, 'Ada')
+    const ada = await member(env, 'Ada')
     const team = await createTeam(ada)
     const token = await inviteToken(ada, team)
-    const grace = await register(env, 'Grace')
+    const grace = await member(env, 'Grace')
 
     const invite = await readPage(await grace.request(href(paths.join, { token }), visit), 'Teams/Join')
 
@@ -73,7 +73,7 @@ describe('invites', () => {
 
   test('a guest who opens a link signs in first, then comes back to it', async () => {
     const env = await freshEnv()
-    const ada = await register(env, 'Ada')
+    const ada = await member(env, 'Ada')
     const token = await inviteToken(ada, await createTeam(ada))
     const guest = testBrowser(app, env)
 
@@ -84,11 +84,11 @@ describe('invites', () => {
 
   test('a link stops working after a week, or once a new one replaces it', async () => {
     const { env, time } = await clockedEnv()
-    const ada = await register(env, 'Ada')
+    const ada = await member(env, 'Ada', time.layer)
     const team = await createTeam(ada)
     const old = await inviteToken(ada, team)
     const current = await inviteToken(ada, team)
-    const grace = await register(env, 'Grace')
+    const grace = await member(env, 'Grace', time.layer)
 
     expect((await grace.request(href(paths.join, { token: old }), visit)).status).toBe(404)
     expect((await grace.request(href(paths.join, { token: old }), send('POST'))).status).toBe(404)
@@ -101,7 +101,7 @@ describe('invites', () => {
 
   test('only the owner and admins see and make invite links', async () => {
     const env = await freshEnv()
-    const ada = await register(env, 'Ada')
+    const ada = await member(env, 'Ada')
     const team = await createTeam(ada)
     const grace = await joinTeam(env, 'Grace', await inviteToken(ada, team))
 
@@ -113,7 +113,7 @@ describe('invites', () => {
 describe('roles', () => {
   test('the owner makes a member an admin, who may then run retros', async () => {
     const env = await freshEnv()
-    const ada = await register(env, 'Ada')
+    const ada = await member(env, 'Ada')
     const team = await createTeam(ada)
     const grace = await joinTeam(env, 'Grace', await inviteToken(ada, team))
     const graceId = (await members(grace, team)).you
@@ -128,7 +128,7 @@ describe('roles', () => {
 
   test('only the owner changes roles, and nobody changes the owner’s', async () => {
     const env = await freshEnv()
-    const ada = await register(env, 'Ada')
+    const ada = await member(env, 'Ada')
     const team = await createTeam(ada)
     const token = await inviteToken(ada, team)
     const grace = await joinTeam(env, 'Grace', token)
@@ -149,7 +149,7 @@ describe('roles', () => {
 
   test('anyone may leave, an admin removes members, and the owner stays', async () => {
     const env = await freshEnv()
-    const ada = await register(env, 'Ada')
+    const ada = await member(env, 'Ada')
     const team = await createTeam(ada)
     const token = await inviteToken(ada, team)
     const grace = await joinTeam(env, 'Grace', token)

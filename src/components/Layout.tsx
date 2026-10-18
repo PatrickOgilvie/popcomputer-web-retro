@@ -13,7 +13,6 @@ interface LayoutProps {
 
 const primaryNavigation = [
   { label: 'Teams', href: paths.dashboard },
-  { label: 'Devices', href: paths.sessions },
 ] as const
 
 function isActivePath(currentPath: string, href: string): boolean {
@@ -78,19 +77,11 @@ export default function Layout({ children }: LayoutProps) {
           ) : null}
           <div className="ml-auto flex items-center gap-2">
             {user ? (
-              <AccountMenu displayName={displayName} email={user.email} />
+              <AccountMenu displayName={displayName} email={user.isAnonymous ? 'Guest, deleted after a week' : user.email} />
             ) : (
-              <>
-                <Link href={paths.login} className={buttonClassName({ variant: 'ghost', size: 'sm' })}>
-                  Sign in
-                </Link>
-                <Link
-                  href={paths.register}
-                  className={buttonClassName({ size: 'sm', className: 'hidden sm:inline-flex' })}
-                >
-                  Create account
-                </Link>
-              </>
+              <Link href={paths.login} className={buttonClassName({ size: 'sm' })}>
+                Start the demo
+              </Link>
             )}
           </div>
         </div>

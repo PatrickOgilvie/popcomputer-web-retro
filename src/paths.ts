@@ -3,7 +3,6 @@
 export const paths = {
   dashboard: '/',
   login: '/login',
-  register: '/register',
   logout: '/logout',
 
   teams: '/teams',
@@ -20,8 +19,4 @@ export const paths = {
   note: '/teams/{team:slug}/retros/{retro}/notes/{note}',
   noteVotes: '/teams/{team:slug}/retros/{retro}/notes/{note}/votes',
   noteDone: '/teams/{team:slug}/retros/{retro}/notes/{note}/done',
-
-  sessions: '/sessions',
-  otherSessions: '/sessions/others',
-  session: '/sessions/{session}',
 } as const

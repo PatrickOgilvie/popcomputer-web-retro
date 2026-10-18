@@ -1,7 +1,7 @@
 // The fields each form sends, which its action validates and its page types
 // its form with. The browser imports this module only with `import type`.
 import { Schema as S } from 'effect'
-import { between, checkbox, currentPassword, email, password, requiredString } from '@popcomputer/web/schema'
+import { between, checkbox, requiredString } from '@popcomputer/web/schema'
 
 /** A role in a team: an owner runs everything, an admin runs retros and invites, a member takes part. */
 export const Role = S.Literals(['owner', 'admin', 'member'])
@@ -35,12 +35,3 @@ export const RoleForm = S.Struct({ role: S.Literals(['admin', 'member']) })
 
 /** An invite link's token, from its path. */
 export const InviteToken = S.Struct({ token: requiredString })
-
-// A password signs in exactly as it was chosen: currentPassword never trims it.
-export const SignIn = S.Struct({ email, password: currentPassword })
-
-export const Register = S.Struct({
-  name,
-  email,
-  password: password({ min: 12, max: 128 }),
-})

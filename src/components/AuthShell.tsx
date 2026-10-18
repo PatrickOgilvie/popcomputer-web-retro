@@ -1,19 +1,19 @@
-import { Link } from '@inertiajs/react'
 import { EyeOff, Users, Vote } from 'lucide-react'
 import type { ReactNode } from 'react'
 
 import Brand from '~/components/Brand'
-import UnderTheHood, { Guarantee } from '~/components/UnderTheHood'
+import UnderTheHood from '~/components/UnderTheHood'
 import usePageTransitionFocus from '~/components/usePageTransitionFocus'
 
 interface AuthShellProps {
   readonly title: string
   readonly description: string
-  readonly alternatePrompt: string
-  readonly alternateHref: string
-  readonly alternateLabel: string
+  /** A line under the form, such as how long a guest lasts. */
+  readonly footnote?: ReactNode
   readonly route: string
   readonly action: string
+  /** What the framework guarantees for this page's form, as UnderTheHood's items. */
+  readonly guarantees: ReactNode
   readonly children: ReactNode
 }
 
@@ -35,15 +35,14 @@ const tour = [
   },
 ] as const
 
-/** Shared, responsive frame for the sign-in and registration journeys. */
+/** The responsive frame for the sign-in page: the form, and a tour of the app beside it. */
 export default function AuthShell({
   title,
   description,
-  alternatePrompt,
-  alternateHref,
-  alternateLabel,
+  footnote,
   route,
   action,
+  guarantees,
   children,
 }: AuthShellProps) {
   const { mainRef, announcement } = usePageTransitionFocus()
@@ -73,15 +72,7 @@ export default function AuthShell({
             {description}
           </p>
           <div className="mt-8">{children}</div>
-          <p className="mt-8 text-sm text-zinc-600 dark:text-zinc-400">
-            {alternatePrompt}{' '}
-            <Link
-              href={alternateHref}
-              className="rounded-sm font-medium text-zinc-950 underline underline-offset-4 hover:text-zinc-700 focus-visible:outline-2 focus-visible:outline-orange-600 dark:text-white dark:hover:text-zinc-300"
-            >
-              {alternateLabel}
-            </Link>
-          </p>
+          {footnote ? <p className="mt-8 text-sm text-pretty text-zinc-600 dark:text-zinc-400">{footnote}</p> : null}
         </div>
       </main>
 
@@ -113,14 +104,7 @@ export default function AuthShell({
           ))}
         </ul>
         <UnderTheHood route={route} action={action} compact>
-          <Guarantee>
-            The form is validated by its schema in <code className="font-mono text-xs">src/forms.ts</code>, then
-            sent through Better Auth’s own handler; browsers can’t reach{' '}
-            <code className="font-mono text-xs">/api/auth/*</code>.
-          </Guarantee>
-          <Guarantee>
-            Attempts are limited per address by Cloudflare’s Rate Limiting binding, and per account in D1.
-          </Guarantee>
+          {guarantees}
         </UnderTheHood>
       </aside>
     </div>

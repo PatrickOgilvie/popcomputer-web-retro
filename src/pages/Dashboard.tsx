@@ -60,7 +60,8 @@ function NewTeamForm({ autoFocus = false }: { readonly autoFocus?: boolean }) {
 /** The member's teams, and a form that starts another. */
 const Dashboard: WebPage<'Dashboard'> = ({ teams }) => {
   const { auth } = usePage().props
-  const firstName = auth.user?.name.trim().split(/\s+/)[0] || 'there'
+  // A guest's name, such as Curious Otter, reads as a whole.
+  const firstName = (auth.user?.isAnonymous ? auth.user.name : auth.user?.name.trim().split(/\s+/)[0]) || 'there'
 
   return (
     <>

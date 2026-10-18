@@ -1,6 +1,8 @@
 import { betterAuth, type BetterAuthOptions } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
+import { anonymous } from 'better-auth/plugins'
 import type { Database } from './db'
+import { guestName } from './guests'
 import * as schema from './schema'
 
 export interface CreateAuthOptions {
@@ -23,7 +25,10 @@ export function createAuth(options: CreateAuthOptions) {
     database: drizzleAdapter(options.db, { provider: 'sqlite', schema }),
     secret: options.secret,
     baseURL: options.baseURL,
-    emailAndPassword: { enabled: true },
+    // A demo: visitors sign in as guests, with no email or password, and
+    // nobody registers. The anonymous plugin makes each guest's account.
+    emailAndPassword: { enabled: false },
+    plugins: [anonymous({ generateName: guestName })],
     logger: { log, ...options.logger },
     // setupWeb's auth.signInLimits limits signing in, up and every password
     // call by address and account. Better Auth's own limits stay on too, in

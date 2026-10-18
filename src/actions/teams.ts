@@ -163,7 +163,7 @@ export const listMembers = action(
           role: memberships.role,
           createdAt: memberships.createdAt,
           name: user.name,
-          email: user.email,
+          email: sql<string>`CASE WHEN ${user.isAnonymous} THEN 'Guest' ELSE ${user.email} END`,
         })
           .from(memberships)
           .innerJoin(user, eq(user.id, memberships.userId))

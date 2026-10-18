@@ -1,38 +1,25 @@
 import { Effect } from 'effect'
-import { action, intendedUrl, invalid, validateRequest } from '@popcomputer/web/effect'
-import { betterAuthRedirect, type BetterAuthActionError } from '@popcomputer/web/auth'
-import { Register, SignIn } from '../forms'
+import { action, intendedUrl, invalid } from '@popcomputer/web/effect'
+import { betterAuthRedirect } from '@popcomputer/web/auth'
+import { seedDemo } from '../demo'
 import { paths } from '../paths'
 
-// Better Auth turns away a form without the Origin header every browser sends,
-// so only a script such as curl meets these, and its email isn't to blame.
-const rejected = (error: BetterAuthActionError) =>
-  error.code?.endsWith('ORIGIN') === true
-    ? { form: `${error.message}: send the app's address as the Origin header, as a browser does.` }
-    : { email: error.message }
-
-const tooManyAttempts = (seconds: number | undefined) =>
-  invalid({ email: `Too many attempts. Try again in ${seconds ?? 60} seconds.` })
-
-export const signIn = action(
+/**
+ * Starts the demo: signs the visitor in as a guest of their own, through
+ * Better Auth's anonymous plugin, gives them their teams and retros, and sends them
+ * where they were going. A guest is a sign-in like any other, so the sign-in
+ * limits count it by address.
+ */
+export const startDemo = action(
   Effect.gen(function* () {
-    const input = yield* validateRequest(SignIn)
-    const redirectTo = yield* intendedUrl(paths.dashboard)
+    const destination = yield* intendedUrl(paths.dashboard)
 
-    return yield* betterAuthRedirect('signInEmail', { body: input }, {
-      redirectTo,
-      errors: rejected,
+    return yield* betterAuthRedirect('signInAnonymous', {}, {
+      redirectTo: (result) => seedDemo(result.user.id).pipe(Effect.as(destination)),
     })
-  }).pipe(Effect.catchTag('AuthRateLimitError', (error) => tooManyAttempts(error.retryAfterSeconds)))
-)
-
-export const signUp = action(
-  Effect.gen(function* () {
-    const input = yield* validateRequest(Register)
-
-    return yield* betterAuthRedirect('signUpEmail', { body: input }, {
-      redirectTo: paths.dashboard,
-      errors: rejected,
-    })
-  }).pipe(Effect.catchTag('AuthRateLimitError', (error) => tooManyAttempts(error.retryAfterSeconds)))
+  }).pipe(
+    Effect.catchTag('AuthRateLimitError', (error) =>
+      invalid({ form: `Lots of demos have started from here just now. Try again in ${error.retryAfterSeconds ?? 60} seconds.` })
+    )
+  )
 )
