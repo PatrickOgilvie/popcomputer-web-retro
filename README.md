@@ -181,11 +181,15 @@ Cloudflare take the same name when you first set it up there.
 
 `bun run dev` does the setup a new app needs. The first time, it writes
 `.dev.vars` with a new secret for signing in, and each time it applies any new
-migrations to the local D1 database. It stops, saying what to add, if
+migrations to the local D1 database and gives the app its own address as
+`APP_URL`, in place of the live one. It stops, saying what to add, if
 `.dev.vars` lacks a secret `src/env.ts` says the app needs, as
 [Vars and secrets](#vars-and-secrets) shows. Then it runs Vite, with Cloudflare's
 Vite plugin running the Worker inside it, so the pages and their scripts share
-one address, and an edit shows in the browser as you save it. Portless gives
+one address, and an edit shows in the browser as you save it. An edit to an
+action or to `src/routes.ts` runs the Worker's modules afresh, with
+`reloadWorkerModules()` from `@popcomputer/web/vite` in `vite.config.ts`, so
+the routes register once. Portless gives
 that address the app's name instead of a port. If Node.js is missing, it says
 so and stops. Once Vite is ready it says which address to open. Stop the app
 with Ctrl-C, or, when it runs in another terminal or in the background, with
@@ -243,10 +247,11 @@ bun run check
 ```
 
 `check` runs the type check, the framework's lint rules (`oxlint`) and the
-tests. The tests send requests through the app, signing in through the real
-registration form, each against a D1 database of its own in Miniflare, in
-process. On GitHub, `.github/workflows/check.yml` runs it for each push to
-`main` and each pull request.
+tests. The tests send requests through the app, starting the demo through
+the real sign-in form or signing members in with `signedIn`, each against a
+D1 database of its own in Miniflare, in process. On GitHub,
+`.github/workflows/check.yml` runs it for each push to `main` and each pull
+request.
 
 ## Changing the database
 
@@ -320,8 +325,9 @@ with the id in brackets.
 `src/env.ts` declares each var and secret the Worker reads, once, with an
 Effect schema for its value. The Worker checks its own against it before it
 serves: a missing or invalid one fails every request, and its log names which.
-The commands below check them before that can happen. The template has two:
-`BETTER_AUTH_SECRET`, which signs sessions, and `ENVIRONMENT`.
+The commands below check them before that can happen. The app has three:
+`BETTER_AUTH_SECRET`, which signs sessions; `APP_URL`, the app's address, as
+[APP_URL](#app_url) says; and `ENVIRONMENT`.
 
 A secret, such as another service's API key, is declared with `secret(...)`.
 A secret nobody has to choose, such as `BETTER_AUTH_SECRET`, has a
@@ -367,6 +373,26 @@ bun run env:check --remote
 checks every secret is set on Cloudflare, and `wrangler.jsonc`'s vars, as
 `bun run deploy` would. Cloudflare never shows a secret's value, so it checks
 each one is set, not what it holds. Neither shows a value.
+
+### APP_URL
+
+Better Auth takes `APP_URL`, such as `https://retro.web.popcomputer.com`, as
+its own address, never the address a request arrived at, which whoever sends
+the request chooses. It's an origin, with no path or trailing slash, and each
+place the app runs sets it:
+
+- **On Cloudflare**, `wrangler.jsonc`'s vars set it to the live address,
+  `https://retro.web.popcomputer.com`. A copy deployed elsewhere sets its own
+  there, such as its `workers.dev` address.
+- **`bun run dev`** sets it to the address it serves the app at, such as
+  `https://my-app.localhost`, or `http://localhost:5173` with `PORTLESS=0`.
+  A line in `.dev.vars` sets another, such as a tunnel's.
+- **The tests** set it to `http://localhost`, in `test/app.ts`.
+
+Starting the demo works at each address the Worker answers at, a Version URL
+from `bun run preview` too. Signing out anywhere but `APP_URL` signs the
+browser out, but Better Auth, which trusts only `APP_URL`'s origin, leaves
+the session in the database until it expires.
 
 ## Deploying
 
@@ -437,7 +463,7 @@ It builds the app, uploads it as a version that takes none of the live
 app's requests, checks it answers, and prints its address, such as
 `https://1a2b3c4d-my-app.my-subdomain.workers.dev`. `bun run deploy` makes
 the same code live. A preview runs on the live app's database and secrets:
-what someone does there, signing up or writing a note, they do to the
+what someone does there, starting the demo or writing a note, they do to the
 live app's data. It never applies migrations, so it says when the database
 on Cloudflare hasn't had one yet: pages that need it fail on the preview
 until a deploy applies it. The app has to be deployed once first, and it
@@ -473,13 +499,14 @@ code, not the database: migrations stay applied, so the older code has to work
 with the newer tables. Requests to a Version URL, from `bun run preview` or a
 deploy's check, don't show in `bun run logs`.
 
-Better Auth takes its origin from each request, so the Worker works on
-`workers.dev`, at its Version URLs and on any custom domain routed to it,
-with nothing more to configure.
+Starting the demo works on `workers.dev`, at the Worker's Version URLs and on
+any custom domain routed to it. Better Auth's own address is `APP_URL`
+whichever of them a request reached, as [APP_URL](#app_url) says.
 
 This repository's `wrangler.jsonc` routes the Worker to `retro.web.popcomputer.com`, on
-popcomputer.com's Cloudflare zone. To deploy a copy of your own, remove its
-`routes`, or name a domain on your own account.
+popcomputer.com's Cloudflare zone, and sets `APP_URL` to that address. To
+deploy a copy of your own, remove its `routes`, or name a domain on your own
+account, and set `APP_URL` in its `vars` to the address the copy is served at.
 
 ## Deploying from GitHub
 

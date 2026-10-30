@@ -78,6 +78,18 @@ describe('the demo', () => {
     expect((await teamsOf(second)).map((joined) => joined.name).sort()).toEqual(['Design guild', 'Platform', 'Platform'])
   })
 
+  test('Better Auth takes the app’s address from APP_URL, not from the request', async () => {
+    // A request that names http, at an app whose address is https: the
+    // session cookie is still the one an https address gets, Secure.
+    const guest = testBrowser(app, testEnv({ ...(await freshBindings()), APP_URL: 'https://retro.example.com' }))
+    const res = await guest.request(paths.login, send('POST'))
+    const session = res.headers.getSetCookie().find((cookie) => cookie.includes('session_token='))
+
+    expect(session).toStartWith('__Secure-better-auth.session_token=')
+    expect(session?.split(';').map((part) => part.trim())).toContain('Secure')
+    expect((await guest.request(paths.dashboard, visit)).status).toBe(200)
+  })
+
   test('signing out ends the guest’s session', async () => {
     const browser = await startDemo(await freshEnv())
     const res = await browser.request(paths.logout, send('POST'))

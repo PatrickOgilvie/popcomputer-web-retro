@@ -57,7 +57,10 @@
 			"0 3 * * *"
 		]
 	},
+	// APP_URL is the custom domain in routes above, which Better Auth takes as
+	// its own origin; a copy deployed elsewhere names its own address here.
 	"vars": {
+		"APP_URL": "https://retro.web.popcomputer.com",
 		"ENVIRONMENT": "production"
 	}
 }

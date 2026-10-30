@@ -57,7 +57,7 @@ export const web = setupWeb(new Hono<Env>(), {
       createAuth({
         db,
         secret: c.env.BETTER_AUTH_SECRET,
-        baseURL: new URL(c.req.url).origin,
+        baseURL: c.env.APP_URL,
         advanced: { backgroundTasks },
         // The tests sign in with wrong passwords on purpose, and Better Auth
         // warns at each one.

@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import { env } from '../src/env'
 import { capture, failure } from './command'
 import { loginProblem } from './deploy'
+import { devServerVars, readDevSession } from './dev'
 import { checkLocal, checkRemote, readDevVars, readSecretNames, readWranglerVars, type EnvReport } from './env'
 
 /** Prints what a check found, and returns the exit code: 1 when something must be fixed first. */
@@ -26,7 +27,7 @@ function checkEnvironment(remote: boolean): number {
   const wranglerVars = readWranglerVars(readFileSync('wrangler.jsonc', 'utf8'))
   if (!remote) {
     return report(
-      checkLocal(env, wranglerVars, readDevVars()),
+      checkLocal(env, wranglerVars, readDevVars(), devServerVars(readDevSession({}))),
       "Not ready for bun run dev: src/env.ts says the Worker needs what's below.",
       'Ready for bun run dev.',
       (name) => `${name} isn't in .dev.vars yet; bun run dev writes a new one when it starts.`

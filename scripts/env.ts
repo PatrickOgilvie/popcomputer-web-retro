@@ -53,19 +53,20 @@ function secretsInVars(env: EnvDeclaration, wranglerVars: Readonly<Record<string
 }
 
 /**
- * Checks what `bun run dev` gives the Worker: `wrangler.jsonc`'s vars, with
- * `.dev.vars` over them. A secret still holding the example's placeholder is
- * missing, and a missing one src/env.ts can generate is left for
- * `bun run dev` to write.
+ * Checks what `bun run dev` gives the Worker: `wrangler.jsonc`'s vars, then
+ * the vars `bun run dev` sets itself, such as APP_URL, with `.dev.vars` over
+ * both. A secret still holding the example's placeholder is missing, and a
+ * missing one src/env.ts can generate is left for `bun run dev` to write.
  */
 export function checkLocal(
   env: EnvDeclaration,
   wranglerVars: Readonly<Record<string, unknown>>,
-  devVars: Readonly<Record<string, string>>
+  devVars: Readonly<Record<string, string>>,
+  devServerVars: Readonly<Record<string, string>> = {}
 ): EnvReport {
   const problems = [...secretsInVars(env, wranglerVars)]
   const generated: Array<string> = []
-  const values: Record<string, unknown> = { ...wranglerVars, ...devVars }
+  const values: Record<string, unknown> = { ...wranglerVars, ...devServerVars, ...devVars }
   const placeholders = new Set(secretNames(env).filter((name) => isPlaceholder(devVars[name] ?? '')))
   for (const name of placeholders) delete values[name]
 

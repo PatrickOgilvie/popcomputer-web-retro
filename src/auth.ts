@@ -8,6 +8,7 @@ import * as schema from './schema'
 export interface CreateAuthOptions {
   readonly db: Database
   readonly secret: string
+  /** Better Auth's own origin: APP_URL, never the request's URL. */
   readonly baseURL: string
   readonly advanced?: BetterAuthOptions['advanced']
   readonly logger?: BetterAuthOptions['logger']

@@ -16,7 +16,9 @@ Each is declared once, and everything else derives from it:
   in React too (`FormInput<typeof NoteForm>`).
 - `src/pages.ts`: each page's props, taken from the tables' columns.
 - `src/env.ts`: the Worker's vars and secrets, each with its schema; the
-  bindings type derives from it.
+  bindings type derives from it. `APP_URL` is Better Auth's own address,
+  never the request's URL: `wrangler.jsonc` sets the live one, `bun run dev`
+  its own and `test/app.ts` the tests'.
 - `src/app.ts`: `setupWeb`, which owns rendering, D1, auth and route binding.
 - `src/routes.ts`: every route, with the action that answers it.
 - `src/actions/`: the actions. `src/pages/`: the React pages, each listed in

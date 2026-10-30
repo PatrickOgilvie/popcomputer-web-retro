@@ -20,6 +20,8 @@ export async function freshBindings() {
   return {
     DB: await databases.fresh(),
     BETTER_AUTH_SECRET: 'test-only-secret-0123456789abcdef0123456789',
+    // The address the tests' requests go to, as bun run dev's are its own.
+    APP_URL: 'http://localhost',
     SIGN_IN_LIMITER: testRateLimiter(),
     ENVIRONMENT: 'test' as const,
   }
