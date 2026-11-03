@@ -101,7 +101,11 @@ export const createTeam = action(form(TeamForm, { page: paths.dashboard }), (inp
   })
 )
 
-/** The team's retros, newest first, and the action items still open. */
+/**
+ * The team's retros, newest first, and the action items still open. An action
+ * item written while its retro still collects notes is hidden, as the board
+ * hides it, until the voting starts.
+ */
 export const showTeam = action(
   Effect.gen(function* () {
     const member = yield* CurrentMember
@@ -132,7 +136,7 @@ export const showTeam = action(
         })
           .from(notes)
           .innerJoin(retros, eq(retros.id, notes.retroId))
-          .where(and(eq(retros.teamId, team.id), eq(notes.column, 'action'), isNull(notes.doneAt)))
+          .where(and(eq(retros.teamId, team.id), ne(retros.phase, 'collecting'), eq(notes.column, 'action'), isNull(notes.doneAt)))
           .orderBy(desc(notes.createdAt))
       ),
       dbQuery((db) => db.select({ count: count() }).from(memberships).where(eq(memberships.teamId, team.id))),

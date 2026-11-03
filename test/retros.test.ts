@@ -140,6 +140,19 @@ describe('voting', () => {
 })
 
 describe('action items', () => {
+  test('stay off the team page while their retro still collects notes, as the board hides them', async () => {
+    const { ada, grace, team, retro } = await retroWithTwo()
+    await addNote(grace, team, retro, 'action', 'Rotate the on-call')
+    const actions = async () =>
+      (await readPage(await ada.request(href(paths.team, { team }), visit), 'Teams/Show')).props.openActions.map((item) => item.body)
+
+    expect(await actions()).toEqual([])
+
+    await setPhase(ada, team, retro, 'voting')
+
+    expect(await actions()).toEqual(['Rotate the on-call'])
+  })
+
   test('stay open on the team page until someone ticks them off', async () => {
     const { ada, grace, team, retro } = await retroWithTwo()
     await addNote(grace, team, retro, 'action', 'Fix the flaky tests')
