@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { href } from '@popcomputer/web/paths'
-import { readPage, testBrowser, type TestBrowser } from '@popcomputer/web/testing'
+import { readError, readPage, testBrowser, type TestBrowser } from '@popcomputer/web/testing'
 import { paths } from '../src/paths'
 import { app, asksToSignIn, clockedEnv, createRetro, createTeam, freshEnv, inviteToken, joinTeam, member, send, visit } from './app'
 
@@ -96,6 +96,26 @@ describe('invites', () => {
     await time.advance('8 days')
 
     expect((await grace.request(href(paths.join, { token: current }), send('POST'))).status).toBe(404)
+    expect((await grace.request(href(paths.team, { team }), visit)).status).toBe(404)
+  })
+
+  test('a JSON client gets a dead link’s 404 as a JSON failure, not the page', async () => {
+    const env = await freshEnv()
+    const ada = await member(env, 'Ada')
+    const team = await createTeam(ada)
+    const old = await inviteToken(ada, team)
+    await inviteToken(ada, team)
+    const grace = await member(env, 'Grace')
+    const json = { Accept: 'application/json' }
+
+    for (const res of [
+      await grace.request(href(paths.join, { token: old }), { headers: json }),
+      await grace.request(href(paths.join, { token: old }), { method: 'POST', headers: json }),
+      await grace.request(href(paths.join, { token: old }), { method: 'POST', headers: { Authorization: 'Bearer x' } }),
+    ]) {
+      expect(res.status).toBe(404)
+      expect((await readError(res)).httpStatus).toBe(404)
+    }
     expect((await grace.request(href(paths.team, { team }), visit)).status).toBe(404)
   })
 

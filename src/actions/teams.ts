@@ -11,6 +11,8 @@ import {
   flash,
   forbidden,
   form,
+  notFound,
+  prefersJson,
   redirect,
   render,
   uniqueFieldErrors,
@@ -269,6 +271,16 @@ const liveInvite = (token: string) =>
   })
 
 /**
+ * An invite link that has expired or been replaced: its own page, and for a
+ * JSON client the 404 every failure gives it, as a missing record's is.
+ */
+const inviteGone = Effect.gen(function* () {
+  if (yield* prefersJson) return yield* notFound('Invite')
+
+  return yield* render('Teams/InviteExpired', {}, { status: 404 })
+})
+
+/**
  * An invite link: which team it's for, and a button to join. Its token is a
  * plain parameter, no record the path binds, so the action reads it as its
  * input and looks it up.
@@ -278,7 +290,7 @@ export const showInvite = action(form(InviteToken), ({ token }) =>
     const auth = yield* authorize()
     const { invite } = yield* liveInvite(token)
 
-    if (invite === undefined) return yield* render('Teams/InviteExpired', {}, { status: 404 })
+    if (invite === undefined) return yield* inviteGone
 
     const [[people], mine] = yield* Effect.all([
       dbQuery((db) => db.select({ count: count() }).from(memberships).where(eq(memberships.teamId, invite.teamId))),
@@ -307,7 +319,7 @@ export const acceptInvite = action(form(InviteToken), ({ token }) =>
     const auth = yield* authorize()
     const { invite, now } = yield* liveInvite(token)
 
-    if (invite === undefined) return yield* render('Teams/InviteExpired', {}, { status: 404 })
+    if (invite === undefined) return yield* inviteGone
 
     yield* dbMutation((db) =>
       db.insert(memberships)
