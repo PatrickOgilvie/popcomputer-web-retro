@@ -11,6 +11,7 @@
     "dev": "bun scripts/run-dev.ts",
     "stop": "bun scripts/stop-dev.ts",
     "check": "tsc --noEmit && echo 'Types: no errors' && oxlint && echo 'Lint: no problems' && bun test",
+    "fuzz": "FUZZ_RUNS=${FUZZ_RUNS:-5000} FUZZ_SEED=${FUZZ_SEED:-random} bun test test/requests.test.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "wrangler d1 migrations apply DB --remote -c wrangler.jsonc",
     "db:migrate:local": "wrangler d1 migrations apply DB --local -c wrangler.jsonc",

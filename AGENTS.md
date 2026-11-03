@@ -37,6 +37,11 @@ Each is declared once, and everything else derives from it:
 5. Write the component in `src/pages/`, typed `WebPage<'Name'>`, and add it
    to `components` in `src/main.tsx`; a page without one is a type error.
 6. Test it in `test/` through the app, as the tests there do.
+   `test/requests.test.ts` fuzzes every route with the forms its actions
+   declare; give a new path placeholder its values there, and seed and
+   watch a new table, with the rule for who in a team may write its rows
+   in `teamWrites`. `bun test` runs it for 200 cases; `bun run fuzz` runs
+   5,000 from a new seed, and a failure prints the replay that repeats it.
 
 The team and retro pages are examples to copy and learn from: a membership
 guard (`src/memberships.ts`) for every route under `/teams/{team:slug}`,
