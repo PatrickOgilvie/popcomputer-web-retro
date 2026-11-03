@@ -78,11 +78,13 @@ it and what the framework guarantees there.
 
   ```ts
   // src/actions/retros.ts
-  export const changePhase = action(Effect.gen(function* () {
-    const member = yield* can('retros.run') // a 403 for a member
-    const retro = yield* bound('retro')     // only this team's retros load
-    // ...
-  }))
+  export const changePhase = action(form(PhaseForm, { page: paths.retro }), ({ phase }) =>
+    Effect.gen(function* () {
+      const member = yield* can('retros.run') // a 403 for a member
+      const retro = yield* bound('retro')     // only this team's retros load
+      // ...
+    })
+  )
   ```
 
 - **Records load only under their team.** `retro` is scoped to `team`, and

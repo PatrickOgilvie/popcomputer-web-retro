@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import { href } from '@popcomputer/web/paths'
 import { readPage, type TestBrowser } from '@popcomputer/web/testing'
 import { paths } from '../src/paths'
-import { addNote, board, createRetro, createTeam, freshEnv, inviteToken, joinTeam, member, send, setPhase, visit } from './app'
+import { addNote, board, createRetro, createTeam, freshEnv, inviteToken, joinTeam, member, send, setPhase, startDemo, visit, withoutReferer } from './app'
 
 /** Ada runs a team with Grace in it, and a retro collecting notes. */
 async function retroWithTwo(votesPerPerson = 3) {
@@ -155,5 +155,29 @@ describe('action items', () => {
     await grace.request(href(paths.noteDone, { team, retro, note }), send('PUT', { done: true }))
 
     expect((await teamPage()).openActions).toEqual([])
+  })
+})
+
+describe('forms', () => {
+  test('a form sent without a Referer goes back to the page it is on, by its action’s page', async () => {
+    const env = await freshEnv()
+    const guest = await startDemo(env)
+    const team = await createTeam(guest)
+    const retro = await createRetro(guest, team)
+
+    const naming = withoutReferer(guest, env)
+    const named = await naming.request(paths.teams, send('POST', { name: '  ' }))
+
+    expect((await readPage(await naming.follow(named), 'Dashboard')).props.errors.name).toBeDefined()
+
+    const starting = withoutReferer(guest, env)
+    const started = await starting.request(href(paths.retros, { team }), send('POST', { title: '  ', votesPerPerson: 3 }))
+
+    expect((await readPage(await starting.follow(started), 'Teams/Show')).props.errors.title).toBeDefined()
+
+    const writing = withoutReferer(guest, env)
+    const written = await writing.request(href(paths.notes, { team, retro }), send('POST', { column: 'went_well', body: '  ' }))
+
+    expect((await readPage(await writing.follow(written), 'Retros/Show')).props.errors.body).toBeDefined()
   })
 })

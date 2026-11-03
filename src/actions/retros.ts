@@ -9,21 +9,24 @@ import {
   dbMutation,
   dbQuery,
   flash,
+  form,
   invalid,
   redirect,
   render,
-  validateRequest,
 } from '@popcomputer/web/effect'
 import { ActionDone, NoteForm, PhaseForm, RetroForm } from '../forms'
 import { can, CurrentMember } from '../memberships'
 import { paths } from '../paths'
 import { notes, retros, votes } from '../schema'
 
-/** A new retro for the team, open for notes. */
-export const createRetro = action(
+/**
+ * A new retro for the team, open for notes. A form that fails validation goes
+ * back to the page it was sent from, with its errors; `page` names that page
+ * for a request whose Referer doesn't.
+ */
+export const createRetro = action(form(RetroForm, { page: paths.team }), (input) =>
   Effect.gen(function* () {
     const member = yield* can('retros.run')
-    const input = yield* validateRequest(RetroForm)
     const [created] = yield* dbMutation((db) =>
       db.insert(retros).values({ ...input, teamId: member.teamId, createdBy: member.userId }).returning({ id: retros.id })
     )
@@ -98,11 +101,10 @@ export const showRetro = action(
 const phaseNames = { collecting: 'Writing notes', voting: 'Voting', discussing: 'Discussing', closed: 'Closed' } as const
 
 /** Moves the retro to another phase. Admins and the owner run retros. */
-export const changePhase = action(
+export const changePhase = action(form(PhaseForm, { page: paths.retro }), ({ phase }) =>
   Effect.gen(function* () {
     const member = yield* can('retros.run')
     const retro = yield* bound('retro')
-    const { phase } = yield* validateRequest(PhaseForm)
     const now = DateTime.toDateUtc(yield* DateTime.now)
 
     yield* dbMutation((db) =>
@@ -133,11 +135,10 @@ export const deleteRetro = action(
  * only in a phase that's open for that column; each column's form names an
  * error bag, so a refusal shows under the column it came from.
  */
-export const addNote = action(
+export const addNote = action(form(NoteForm, { page: paths.retro }), (input) =>
   Effect.gen(function* () {
     const member = yield* CurrentMember
     const retro = yield* bound('retro')
-    const input = yield* validateRequest(NoteForm)
 
     yield* dbMutation((db) =>
       db.insert(notes).values({ ...input, retroId: retro.id, authorId: member.userId })
@@ -206,12 +207,11 @@ export const unvote = action(
 )
 
 /** Ticks an action item off, or opens it again. Anyone in the team may. */
-export const markDone = action(
+export const markDone = action(form(ActionDone, { page: paths.retro }), ({ done }) =>
   Effect.gen(function* () {
     const member = yield* CurrentMember
     const retro = yield* bound('retro')
     const note = yield* bound('note')
-    const { done } = yield* validateRequest(ActionDone)
     const now = DateTime.toDateUtc(yield* DateTime.now)
 
     yield* dbMutation((db) =>

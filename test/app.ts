@@ -95,6 +95,20 @@ export async function startDemo(env: Env): Promise<TestBrowser> {
   return browser
 }
 
+/**
+ * The same visitor in a browser that sends no Referer, as one whose privacy
+ * settings withhold it does, so a form it posts names no page it came from.
+ * It carries the browser's cookies, so it suits a guest who started the demo,
+ * whose session is a cookie; a `member`'s session is in its own env.
+ */
+export function withoutReferer(browser: TestBrowser, env: Env): TestBrowser {
+  const other = testBrowser(app, env)
+
+  for (const [name, value] of browser.cookies) other.setCookie(name, value)
+
+  return other
+}
+
 /** The last segment of a redirect's path, such as a new retro's id. */
 function lastSegment(res: Response): string {
   const location = new URL(res.headers.get('Location') ?? '/', 'http://localhost').pathname

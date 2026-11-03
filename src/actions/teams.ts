@@ -10,10 +10,10 @@ import {
   dbQuery,
   flash,
   forbidden,
+  form,
   redirect,
   render,
   uniqueFieldErrors,
-  validateRequest,
 } from '@popcomputer/web/effect'
 import { rowOf } from '@popcomputer/web/drizzle'
 import { InviteToken, RoleForm, TeamForm } from '../forms'
@@ -83,10 +83,9 @@ export const showDashboard = action(
 )
 
 /** A new team, with the member who made it as its owner, written together. */
-export const createTeam = action(
+export const createTeam = action(form(TeamForm, { page: paths.dashboard }), (input) =>
   Effect.gen(function* () {
     const auth = yield* authorize()
-    const input = yield* validateRequest(TeamForm)
     const id = crypto.randomUUID()
     const slug = slugFor(input.name)
 
@@ -208,11 +207,10 @@ export const newInvite = action(
 )
 
 /** Makes a member an admin, or an admin a member. Only the owner may. */
-export const changeRole = action(
+export const changeRole = action(form(RoleForm, { page: paths.teamMembers }), (input) =>
   Effect.gen(function* () {
     const { team } = yield* can('members.role')
     const target = yield* bound('member')
-    const input = yield* validateRequest(RoleForm)
 
     if (target.role === 'owner') return yield* forbidden('The owner’s role doesn’t change.')
 
@@ -270,11 +268,14 @@ const liveInvite = (token: string) =>
     return { invite, now }
   })
 
-/** An invite link: which team it's for, and a button to join. */
-export const showInvite = action(
+/**
+ * An invite link: which team it's for, and a button to join. Its token is a
+ * plain parameter, no record the path binds, so the action reads it as its
+ * input and looks it up.
+ */
+export const showInvite = action(form(InviteToken), ({ token }) =>
   Effect.gen(function* () {
     const auth = yield* authorize()
-    const { token } = yield* validateRequest(InviteToken)
     const { invite } = yield* liveInvite(token)
 
     if (invite === undefined) return yield* render('Teams/InviteExpired', {}, { status: 404 })
@@ -301,10 +302,9 @@ export const showInvite = action(
  * Joins the team an invite link is for, as a member. The membership is
  * written only while the invite is live, in the insert itself.
  */
-export const acceptInvite = action(
+export const acceptInvite = action(form(InviteToken), ({ token }) =>
   Effect.gen(function* () {
     const auth = yield* authorize()
-    const { token } = yield* validateRequest(InviteToken)
     const { invite, now } = yield* liveInvite(token)
 
     if (invite === undefined) return yield* render('Teams/InviteExpired', {}, { status: 404 })

@@ -28,7 +28,10 @@ Each is declared once, and everything else derives from it:
 
 1. Declare its path in `src/paths.ts`.
 2. Declare its props in `src/pages.ts`.
-3. Declare its form's fields, if it has a form, in `src/forms.ts`.
+3. Declare its form's fields, if it has a form, in `src/forms.ts`. The
+   action that takes the form receives them validated:
+   `action(form(RetroForm, { page: paths.team }), (input) => ...)`,
+   where `page` is the page the form is on.
 4. Write its action in `src/actions/`, and register it in `src/routes.ts`
    (behind `RequireAuthLayer` when it needs a signed-in member).
 5. Write the component in `src/pages/`, typed `WebPage<'Name'>`, and add it
@@ -88,8 +91,9 @@ the live one.
 1. Declare it in `src/env.ts`: `secret(schema)` for a secret, with
    `{ generate: randomSecret }` when the app can make its own value;
    `variable(schema)` for a plain var; `{ optional: true }` when the app runs
-   without it. Read it with `config.string('NAME')` or
-   `config.redacted('NAME')`.
+   without it. Read it in an action or a service with
+   `yield* env.config.NAME`, decoded by its schema: a secret as `Redacted`,
+   an optional one as an `Option`.
 2. A var goes in `vars` in `wrangler.jsonc`. Never put a secret there.
 3. A secret goes in `.dev.vars` (`NAME=value`) for `bun run dev`, as a
    placeholder line in `.dev.vars.example`, and in `test/app.ts`'s bindings.
