@@ -7,7 +7,7 @@
       "dependencies": {
         "@base-ui/react": "^1.9.0",
         "@inertiajs/react": "3.9.1",
-        "@popcomputer/web": "^1.13.0",
+        "@popcomputer/web": "^1.13.1",
         "better-auth": "1.7.10",
         "clsx": "^2.1.1",
         "drizzle-orm": "0.45.4",
@@ -323,7 +323,7 @@
 
     "@oxlint/binding-win32-x64-msvc": ["@oxlint/binding-win32-x64-msvc@1.82.0", "", { "os": "win32", "cpu": "x64" }, "sha512-VTVoRIWJTb+wvUX8EYoPArfFH02whuR10goFXE/LHRRX33ajRrFgqbcONXZMiF4C5rnattfkm87HqYn8jb8hmQ=="],
 
-    "@popcomputer/web": ["@popcomputer/web@1.13.0", "", { "peerDependencies": { "@types/react": ">=18", "better-auth": ">=1.7.7 <1.8.0", "drizzle-orm": ">=0.45.2 <1.0.0", "effect": "^4.0.0", "hono": "^4.13.5", "miniflare": ">=4.0.0 <5.0.0", "typescript": ">=7.0.0 <8.0.0", "vite": ">=6.1.0" }, "optionalPeers": ["@types/react", "better-auth", "drizzle-orm", "miniflare", "typescript", "vite"], "bin": { "popweb-fence": "dist/fence/cli.js", "popweb-mutate": "dist/mutate.js" } }, "sha512-SIq1B+mTgTmU/58wGkWXogM0S24FoPFcrUCw8Qk/YA3FYxS++YGeXdKR+kuf2Y9HemgyhE/7TymgvBRXBFD/0w=="],
+    "@popcomputer/web": ["@popcomputer/web@1.13.1", "", { "peerDependencies": { "@types/react": ">=18", "better-auth": ">=1.7.7 <1.8.0", "drizzle-orm": ">=0.45.2 <1.0.0", "effect": "^4.0.0", "hono": "^4.13.5", "miniflare": ">=4.0.0 <5.0.0", "typescript": ">=7.0.0 <8.0.0", "vite": ">=6.1.0" }, "optionalPeers": ["@types/react", "better-auth", "drizzle-orm", "miniflare", "typescript", "vite"], "bin": { "popweb-fence": "dist/fence/cli.js", "popweb-mutate": "dist/mutate.js" } }, "sha512-7InCG5ug+a0AlNjs1C4aCpIuMomRHWOzZcy7/9BY1INGEcT/AIC0krlj9fU7x7ckuGKRyYyOrHCqUkLcRi8QkA=="],
 
     "@poppinss/colors": ["@poppinss/colors@4.1.6", "", { "dependencies": { "kleur": "^4.1.5" } }, "sha512-H9xkIdFswbS8n1d6vmRd8+c10t2Qe+rZITbbDHHkQixH5+2x1FDGmi/0K+WgWiqQFKPSlIYB7jlH6Kpfn6Fleg=="],
 
