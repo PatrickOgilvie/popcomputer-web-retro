@@ -142,7 +142,62 @@ once the repository has the `CLOUDFLARE_API_TOKEN` and
 `CLOUDFLARE_ACCOUNT_ID` secrets; the README's "Deploying from GitHub" says
 how the user adds them.
 
+## The fence
+
+The checks below hold whether or not a paragraph is read:
+
+- The commit gate, `.githooks/pre-commit`, runs the type check, the lint
+  rules, the tests and the debt check before every commit. `bun install`
+  installs it in a git repository; `git rev-parse --git-path hooks` then
+  prints `.githooks`. If it prints anything else, ask the user to run
+  `git config core.hooksPath .githooks` in their own terminal. Never skip
+  the gate (`git commit --no-verify` or `-n`, a changed `core.hooksPath`):
+  fix what it reports.
+- The command hook, in `.claude/settings.json` and `.cursor/hooks.json`,
+  refuses a command that skips the gate, and asks the user before one that
+  deploys, touches the live database, sets a secret, pushes, or changes the
+  fence itself (`oxlint.config.ts`, `.githooks/`, the hooks, `lint-debt.json`).
+- The type check runs the Effect language service, so an Effect that is
+  neither yielded nor assigned fails it (`effect(floatingEffect)`).
+  `bun install` patches TypeScript for it.
+- `lint-debt.json` counts every comment that turns a rule or a check off,
+  and the count only shrinks: `bunx popweb-fence debt --update` records a
+  lower one. Fix the code a rule reports; when a line breaks a rule on
+  purpose, say why after ` -- ` in its disable comment, and leave raising
+  the count to the user.
+
+## Boundaries and sign-off
+
+- **You may, alone:** write and change actions, routes, pages, services,
+  schemas, migrations and their tests; run them against the local database
+  (`bun run dev`, `bun run db:migrate:local`, `bun run db:execute` without
+  `--remote`) and build (`bun run build`); add or tighten a test, a lint
+  rule, a binding's access or a role's permissions; fix the code a rule
+  reports, lowering the debt; edit the documentation and this file, except
+  this section; commit locally once the gate passes.
+- **Needs the user's sign-off:** a deploy (`bun run deploy`, `bun run
+  preview`, `bun run rollback`); the live database (`bun run db:migrate`,
+  any `--remote` read or write); secrets (`bun run secret`); deleting local
+  data (`bun run db:reset`, `bun run db:seed`); a push; loosening
+  `oxlint.config.ts` or raising the debt count; changing the commit gate or
+  the agent's hooks; and widening access: who may load a record (a binding
+  moved to `publicWhen` or `public`, or a record's `scope` dropped), a route
+  moved out from behind `RequireMember` or `RequireAuthLayer`, a role given
+  a permission in `src/memberships.ts`, who may join a team (an invite that
+  outlives its week, or a join without one), Better Auth's handler
+  registered for its client SDK and the user fields its `settable` names,
+  `verifyOrigin`'s `allowedOrigins`, a raised `bodyLimit`, or
+  `history.encrypt` turned off.
+
+The command hook asks the user before the steps it can see. Ask before the
+others yourself, and say what the change widens.
+
 ## Before finishing
 
-Run `bun run check`: the type check, the framework's lint rules and the
-tests. Fix what they report rather than disabling a rule.
+Run `bun run check`: the type check with the Effect language service, the
+framework's lint rules, the tests and the debt check. Fix what they report
+rather than disabling a rule. After changing routes, bindings or actions,
+run `bun run fuzz` too. Then run `bun run mutate`: it plants small bugs in
+the `src/` lines you changed and lists each one no test catches; write the
+test that fails with each, or say why the change it makes is one no caller
+sees.

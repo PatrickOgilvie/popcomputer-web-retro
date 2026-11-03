@@ -14,13 +14,13 @@ export const Team = teamFields.mapFields(Struct.pick(['id', 'slug', 'name', 'cre
 export const TeamSummary = teamFields.mapFields((fields) => ({
   ...Struct.pick(fields, ['id', 'slug', 'name']),
   role: Role,
-  memberCount: S.Number,
-  activeRetros: S.Number,
+  memberCount: S.Int,
+  activeRetros: S.Int,
 }))
 
 export const RetroSummary = retroFields.mapFields((fields) => ({
   ...Struct.pick(fields, ['id', 'title', 'phase', 'createdAt', 'closedAt']),
-  noteCount: S.Number,
+  noteCount: S.Int,
 }))
 
 export const Retro = retroFields.mapFields(
@@ -42,8 +42,8 @@ export const BoardNote = noteFields.mapFields((fields) => ({
   ...Struct.pick(fields, ['id', 'column', 'doneAt', 'createdAt']),
   body: S.NullOr(S.String),
   mine: S.Boolean,
-  votes: S.NullOr(S.Number),
-  myVotes: S.Number,
+  votes: S.NullOr(S.Int),
+  myVotes: S.Int,
 }))
 
 /** A member, as the team's other members see them. */
@@ -59,7 +59,7 @@ export const pages = {
   'Teams/Show': S.Struct({
     team: Team,
     role: Role,
-    memberCount: S.Number,
+    memberCount: S.Int,
     retros: S.Array(RetroSummary),
     openActions: S.Array(ActionItem),
   }),
@@ -73,7 +73,7 @@ export const pages = {
   }),
   'Teams/Join': S.Struct({
     team: teamFields.mapFields(Struct.pick(['name', 'slug'])),
-    memberCount: S.Number,
+    memberCount: S.Int,
     alreadyMember: S.Boolean,
     token: S.String,
   }),
@@ -83,6 +83,6 @@ export const pages = {
     retro: Retro,
     role: Role,
     notes: S.Array(BoardNote),
-    votesLeft: S.Number,
+    votesLeft: S.Int,
   }),
 }

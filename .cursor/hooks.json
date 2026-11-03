@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "hooks": {
+    "beforeShellExecution": [
+      {
+        "command": "bun node_modules/@popcomputer/web/dist/fence/cli.js hook",
+        "failClosed": true
+      }
+    ]
+  }
+}

@@ -1,0 +1,7 @@
+#!/bin/sh
+# The commit gate: the checks an agent runs before finishing, before every commit.
+set -e
+bunx tsc --noEmit
+bunx oxlint
+bun test
+bunx popweb-fence debt --check

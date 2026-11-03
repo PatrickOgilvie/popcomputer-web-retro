@@ -6,12 +6,14 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
+    "prepare": "effect-tsgo patch && bun .githooks/install.ts",
     "postinstall": "bun run build",
     "build": "NODE_OPTIONS=\"--disable-warning=DEP0040 $NODE_OPTIONS\" vite build",
     "dev": "bun scripts/run-dev.ts",
     "stop": "bun scripts/stop-dev.ts",
-    "check": "tsc --noEmit && echo 'Types: no errors' && oxlint && echo 'Lint: no problems' && bun test",
+    "check": "tsc --noEmit && echo 'Types: no errors' && oxlint && echo 'Lint: no problems' && bun test && popweb-fence debt --check",
     "fuzz": "FUZZ_RUNS=${FUZZ_RUNS:-5000} FUZZ_SEED=${FUZZ_SEED:-random} bun test test/requests.test.ts",
+    "mutate": "popweb-mutate",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "wrangler d1 migrations apply DB --remote -c wrangler.jsonc",
     "db:migrate:local": "wrangler d1 migrations apply DB --local -c wrangler.jsonc",
@@ -44,6 +46,7 @@
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.64.0",
     "@cloudflare/workers-types": "^5.20261016.1",
+    "@effect/tsgo": "^0.64.1",
     "@tailwindcss/vite": "^4.3.3",
     "@types/bun": "^1.4.3",
     "@types/react": "^19.3.0",
