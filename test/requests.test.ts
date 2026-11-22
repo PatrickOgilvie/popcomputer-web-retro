@@ -15,7 +15,7 @@
  * given values here.
  */
 import { expect, test } from 'bun:test'
-import { eq, inArray } from 'drizzle-orm'
+import { eq, inArray, sql } from 'drizzle-orm'
 import { Redacted } from 'effect'
 import {
   brokenPromises,
@@ -35,8 +35,9 @@ import { signedIn, testEnv } from '@popcomputer/web/testing'
 import { routes } from '../src/app'
 import { createDb, type Database } from '../src/db'
 import { paths } from '../src/paths'
-import { invites, memberships, notes, retros, session, teams, user, votes } from '../src/schema'
+import { account, invites, memberships, notes, rateLimit, retros, session, teams, user, verification, votes } from '../src/schema'
 import { app, freshBindings } from './app'
+import { databases } from './databases'
 
 // Text only one member may see: an answer that shows it to anyone else leaked
 // it. Each one's note in the retro still collecting notes, which no one else
@@ -91,51 +92,77 @@ const signedInAs = (person: Person) => {
   return { user, session: { ...session, token: Redacted.make(session.token) } }
 }
 
+// One database for every case, emptied as each starts: a new one takes several
+// times what a request does. Each case still gets its own bindings, and so its
+// own sign-in limiter, from freshBindings().
+let shared: Awaited<ReturnType<typeof databases.fresh>> | undefined
+
+/**
+ * Every table a case's seed or its request can write, emptied: each before
+ * the tables its foreign keys name, and the count the votes' ids come from,
+ * so each case's start at 1 as a new database's do. A new table goes here too.
+ */
+const emptied = (db: Database) => [
+  db.delete(votes),
+  db.delete(notes),
+  db.delete(retros),
+  db.delete(invites),
+  db.delete(memberships),
+  db.delete(teams),
+  db.delete(session),
+  db.delete(account),
+  db.delete(verification),
+  db.delete(rateLimit),
+  db.delete(user),
+  db.run(sql`DELETE FROM sqlite_sequence WHERE name = 'votes'`),
+] as const
+
 /**
  * Two teams. Platform: Ada owns it, Alan is an admin and Grace a member, so
  * Grace takes part but runs nothing. Grace's own team, which Ada isn't in,
- * with a live invite link and an expired one. Alan never signs in.
+ * with a live invite link and an expired one. Alan never signs in. The
+ * statements of one batch, in the order they run.
  */
-async function seed(db: Database): Promise<void> {
-  await db.insert(user).values([people.ada.user, people.grace.user, userRow('alan', 'Alan')])
-  await db.insert(session).values([people.ada.session, people.grace.session])
-  await db.insert(teams).values([
+const seed = (db: Database) => [
+  db.insert(user).values([people.ada.user, people.grace.user, userRow('alan', 'Alan')]),
+  db.insert(session).values([people.ada.session, people.grace.session]),
+  db.insert(teams).values([
     { id: 't-platform', slug: 'platform', name: 'Platform' },
     { id: 't-grace', slug: 'grace-team', name: 'Design guild' },
-  ])
-  await db.insert(memberships).values([
+  ]),
+  db.insert(memberships).values([
     { teamId: 't-platform', userId: 'ada', role: 'owner' },
     { teamId: 't-platform', userId: 'alan', role: 'admin' },
     { teamId: 't-platform', userId: 'grace', role: 'member' },
     { teamId: 't-grace', userId: 'grace', role: 'owner' },
     { teamId: 't-grace', userId: 'alan', role: 'member' },
-  ])
-  await db.insert(invites).values([
+  ]),
+  db.insert(invites).values([
     { token: canaries.ada.invite, teamId: 't-platform', createdBy: 'ada', expiresAt: until },
     { token: 'invite-grace', teamId: 't-grace', createdBy: 'grace', expiresAt: until },
     { token: 'invite-old', teamId: 't-grace', createdBy: 'grace', expiresAt: since },
-  ])
+  ]),
   // Each retro starts collecting, as the triggers ask, then moves on.
-  await db.insert(retros).values([
+  db.insert(retros).values([
     { id: 'r-voting', teamId: 't-platform', title: 'Sprint 42', votesPerPerson: 2, createdBy: 'ada' },
     { id: 'r-writing', teamId: 't-platform', title: 'Sprint 43', createdBy: 'ada' },
     { id: 'r-grace', teamId: 't-grace', title: canaries.grace.retro, createdBy: 'grace' },
-  ])
-  await db.insert(notes).values([
+  ]),
+  db.insert(notes).values([
     { id: 'n-ada', retroId: 'r-voting', authorId: 'ada', column: 'went_well', body: 'Shipped on time' },
     { id: 'n-grace', retroId: 'r-voting', authorId: 'grace', column: 'to_improve', body: 'Flaky tests' },
     { id: 'n-action', retroId: 'r-writing', authorId: 'alan', column: 'action', body: 'Fix the flaky tests' },
     { id: 'n-ada-hidden', retroId: 'r-writing', authorId: 'ada', column: 'to_improve', body: canaries.ada.note },
     { id: 'n-grace-hidden', retroId: 'r-writing', authorId: 'grace', column: 'action', body: canaries.grace.note },
     { id: 'n-grace-team', retroId: 'r-grace', authorId: 'grace', column: 'went_well', body: canaries.grace.notes },
-  ])
-  await db.update(retros).set({ phase: 'voting' }).where(inArray(retros.id, ['r-voting', 'r-grace']))
-  await db.insert(votes).values([
+  ]),
+  db.update(retros).set({ phase: 'voting' }).where(inArray(retros.id, ['r-voting', 'r-grace'])),
+  db.insert(votes).values([
     { retroId: 'r-voting', noteId: 'n-ada', userId: 'grace' },
     { retroId: 'r-voting', noteId: 'n-grace', userId: 'ada' },
-  ])
-  await db.update(retros).set({ phase: 'discussing' }).where(eq(retros.id, 'r-grace'))
-}
+  ]),
+  db.update(retros).set({ phase: 'discussing' }).where(eq(retros.id, 'r-grace')),
+] as const
 
 const requests = fuzzRequest({
   paths,
@@ -304,11 +331,14 @@ function teamWrites(sent: FuzzRequest<Person>, before: World, after: World): str
 const reached = { cases: 0, rendered: 0, teams: 0, members: 0, invites: 0, retros: 0, notes: 0, votes: 0 }
 
 async function send(sent: FuzzRequest<Person>): Promise<Refusal> {
-  const bindings = await freshBindings()
+  shared ??= await databases.fresh()
+  const bindings = await freshBindings(shared)
   const db = createDb(bindings.DB)
 
-  await seed(db)
+  // Emptied as the case starts, not as it ends, so a case that throws leaves the next nothing; in one batch with the seed.
+  await db.batch([...emptied(db), ...seed(db)])
 
+  // Read, not taken from the seed's rows: the database gives the votes their ids, and the retros and notes what the seed leaves out.
   const before = await snapshot(db)
   const env = sent.person === null ? testEnv(bindings) : testEnv(signedIn(signedInAs(sent.person)), bindings)
   const answer = await sendFuzzRequest(app, sent, env)
