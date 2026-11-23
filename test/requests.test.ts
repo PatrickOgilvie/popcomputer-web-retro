@@ -15,7 +15,7 @@
  * given values here.
  */
 import { expect, test } from 'bun:test'
-import { eq, inArray, sql } from 'drizzle-orm'
+import { eq, inArray } from 'drizzle-orm'
 import { Redacted } from 'effect'
 import {
   brokenPromises,
@@ -33,9 +33,9 @@ import {
 } from '@popcomputer/web/fuzz'
 import { signedIn, testEnv } from '@popcomputer/web/testing'
 import { routes } from '../src/app'
-import { createDb, type Database } from '../src/db'
+import { createDb } from '../src/db'
 import { paths } from '../src/paths'
-import { account, invites, memberships, notes, rateLimit, retros, session, teams, user, verification, votes } from '../src/schema'
+import { invites, memberships, notes, retros, session, teams, user, votes } from '../src/schema'
 import { app, freshBindings } from './app'
 import { databases } from './databases'
 
@@ -92,30 +92,13 @@ const signedInAs = (person: Person) => {
   return { user, session: { ...session, token: Redacted.make(session.token) } }
 }
 
-// One database for every case, emptied as each starts: a new one takes several
-// times what a request does. Each case still gets its own bindings, and so its
-// own sign-in limiter, from freshBindings().
-let shared: Awaited<ReturnType<typeof databases.fresh>> | undefined
-
-/**
- * Every table a case's seed or its request can write, emptied: each before
- * the tables its foreign keys name, and the count the votes' ids come from,
- * so each case's start at 1 as a new database's do. A new table goes here too.
- */
-const emptied = (db: Database) => [
-  db.delete(votes),
-  db.delete(notes),
-  db.delete(retros),
-  db.delete(invites),
-  db.delete(memberships),
-  db.delete(teams),
-  db.delete(session),
-  db.delete(account),
-  db.delete(verification),
-  db.delete(rateLimit),
-  db.delete(user),
-  db.run(sql`DELETE FROM sqlite_sequence WHERE name = 'votes'`),
-] as const
+// One database for every case, and how to empty it: a new one takes several
+// times what a request does. empty() deletes every row of every table the
+// migrations made and starts the votes' ids at 1 again, as a new database's
+// do, firing no trigger. Each case still gets its own bindings, and so its own
+// sign-in limiter, from freshBindings().
+const { database, empty } = await databases.reusable()
+const db = createDb(database)
 
 /**
  * Two teams. Platform: Ada owns it, Alan is an admin and Grace a member, so
@@ -123,7 +106,7 @@ const emptied = (db: Database) => [
  * with a live invite link and an expired one. Alan never signs in. The
  * statements of one batch, in the order they run.
  */
-const seed = (db: Database) => [
+const seed = [
   db.insert(user).values([people.ada.user, people.grace.user, userRow('alan', 'Alan')]),
   db.insert(session).values([people.ada.session, people.grace.session]),
   db.insert(teams).values([
@@ -164,6 +147,14 @@ const seed = (db: Database) => [
   db.update(retros).set({ phase: 'discussing' }).where(eq(retros.id, 'r-grace')),
 ] as const
 
+// The seed, prepared and bound once: on the test database every prepare, bind
+// and run is a round trip of its own, and these cross with their batch alone.
+const seedRows = seed.map((statement) => {
+  const { sql, params } = statement.toSQL()
+
+  return database.prepare(sql).bind(...params)
+})
+
 const requests = fuzzRequest({
   paths,
   routes,
@@ -182,34 +173,43 @@ const requests = fuzzRequest({
 })
 
 /** What the request may change: the users, and each table the routes write, as their rows. */
-async function snapshot(db: Database) {
-  const [users, teamRows, membershipRows, inviteRows, retroRows, noteRows, voteRows] = await Promise.all([
-    db.select({ id: user.id }).from(user).orderBy(user.id),
-    db.select({ id: teams.id, slug: teams.slug, name: teams.name }).from(teams).orderBy(teams.id),
-    db.select({ teamId: memberships.teamId, userId: memberships.userId, role: memberships.role })
-      .from(memberships)
-      .orderBy(memberships.teamId, memberships.userId),
-    db.select({ token: invites.token, teamId: invites.teamId, expiresAt: invites.expiresAt }).from(invites).orderBy(invites.token),
-    db.select({
-      id: retros.id,
-      teamId: retros.teamId,
-      title: retros.title,
-      phase: retros.phase,
-      votesPerPerson: retros.votesPerPerson,
-      closedAt: retros.closedAt,
-    })
-      .from(retros)
-      .orderBy(retros.id),
-    db.select({ id: notes.id, retroId: notes.retroId, authorId: notes.authorId, column: notes.column, body: notes.body, doneAt: notes.doneAt })
-      .from(notes)
-      .orderBy(notes.id),
-    db.select({ id: votes.id, retroId: votes.retroId, noteId: votes.noteId, userId: votes.userId }).from(votes).orderBy(votes.id),
-  ])
-
-  return { users, teams: teamRows, memberships: membershipRows, invites: inviteRows, retros: retroRows, notes: noteRows, votes: voteRows }
+const watched = {
+  users: db.select({ id: user.id }).from(user).orderBy(user.id),
+  teams: db.select({ id: teams.id, slug: teams.slug, name: teams.name }).from(teams).orderBy(teams.id),
+  memberships: db.select({ teamId: memberships.teamId, userId: memberships.userId, role: memberships.role })
+    .from(memberships)
+    .orderBy(memberships.teamId, memberships.userId),
+  invites: db.select({ token: invites.token, teamId: invites.teamId, expiresAt: invites.expiresAt }).from(invites).orderBy(invites.token),
+  retros: db.select({
+    id: retros.id,
+    teamId: retros.teamId,
+    title: retros.title,
+    phase: retros.phase,
+    votesPerPerson: retros.votesPerPerson,
+    closedAt: retros.closedAt,
+  })
+    .from(retros)
+    .orderBy(retros.id),
+  notes: db.select({ id: notes.id, retroId: notes.retroId, authorId: notes.authorId, column: notes.column, body: notes.body, doneAt: notes.doneAt })
+    .from(notes)
+    .orderBy(notes.id),
+  votes: db.select({ id: votes.id, retroId: votes.retroId, noteId: votes.noteId, userId: votes.userId }).from(votes).orderBy(votes.id),
 }
 
-type World = Awaited<ReturnType<typeof snapshot>>
+type World = { readonly [Table in keyof typeof watched]: Awaited<(typeof watched)[Table]> }
+
+// Each read prepared once, to run in one batch, beside the query Drizzle maps
+// its rows with: read one by one, the seven took three round trips each, and
+// a case reads them twice.
+const reads = Object.entries(watched).map(([table, read]) => ({ table, query: read.prepare(), statement: database.prepare(read.toSQL().sql) }))
+
+/** The watched rows as they are now, in one round trip. */
+async function snapshot(): Promise<World> {
+  const results = await database.batch(reads.map((read) => read.statement))
+
+  // As Drizzle maps a batch of its own: each row under the read's names, its dates Dates.
+  return Object.fromEntries(reads.map((read, at) => [read.table, read.query.mapAllResult(results[at], true)])) as World
+}
 
 /** Who is in which team, without their role: whether a membership may exist at all. */
 type Membership = { readonly teamId: string; readonly userId: string }
@@ -331,22 +331,20 @@ function teamWrites(sent: FuzzRequest<Person>, before: World, after: World): str
 const reached = { cases: 0, rendered: 0, teams: 0, members: 0, invites: 0, retros: 0, notes: 0, votes: 0 }
 
 async function send(sent: FuzzRequest<Person>): Promise<Refusal> {
-  shared ??= await databases.fresh()
-  const bindings = await freshBindings(shared)
-  const db = createDb(bindings.DB)
-
-  // Emptied as the case starts, not as it ends, so a case that throws leaves the next nothing; in one batch with the seed.
-  await db.batch([...emptied(db), ...seed(db)])
+  // Emptied as the case starts, not as it ends, so a case that throws leaves the next nothing. Two round trips: one empties, one seeds.
+  await empty()
+  await database.batch(seedRows)
 
   // Read, not taken from the seed's rows: the database gives the votes their ids, and the retros and notes what the seed leaves out.
-  const before = await snapshot(db)
+  const before = await snapshot()
+  const bindings = await freshBindings(database)
   const env = sent.person === null ? testEnv(bindings) : testEnv(signedIn(signedInAs(sent.person)), bindings)
   const answer = await sendFuzzRequest(app, sent, env)
 
   // A request fetch refuses to make never reaches the Worker.
   if (answer === undefined) return undefined
 
-  const after = await snapshot(db)
+  const after = await snapshot()
   // The demo a visitor starts writes every table, so it counts for none of them.
   const wrote = (table: Exclude<keyof World, 'users'>) => after.users.length === before.users.length && show(before[table]) !== show(after[table])
 
