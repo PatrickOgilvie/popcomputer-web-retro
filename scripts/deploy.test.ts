@@ -49,7 +49,8 @@ describe('Cloudflare login', () => {
   test('says to sign in through the browser on a computer, and to set the token in CI', () => {
     expect(loginAdvice('bun run status', false)).toContain('Run bun run cloudflare:login')
     expect(loginAdvice('bun run status', false)).toEndWith('then run bun run status again.')
-    expect(loginAdvice('bun run deploy', true)).toContain('CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID')
+    expect(loginAdvice('bun run deploy', true)).toContain('Set CLOUDFLARE_API_TOKEN')
+    expect(loginAdvice('bun run deploy', true)).toContain('CLOUDFLARE_ACCOUNT_ID')
     expect(loginAdvice('bun run deploy', true)).not.toContain('cloudflare:login')
   })
 })

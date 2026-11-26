@@ -35,7 +35,7 @@ export const RequireMember = guard(CurrentMember, Effect.gen(function* () {
 ## Contents
 
 - [What it does](#what-it-does) · [How it's built](#how-its-built) · [Running it locally](#running-it-locally) · [Checks](#checks)
-- [Changing the database](#changing-the-database) · [The local database's data](#the-local-databases-data) · [Vars and secrets](#vars-and-secrets) · [Deploying](#deploying) · [Deploying from GitHub](#deploying-from-github)
+- [Changing the database](#changing-the-database) · [The local database's data](#the-local-databases-data) · [Vars and secrets](#vars-and-secrets) · [Deploying](#deploying)
 - [Upgrading](#upgrading) · [Working with coding agents](#working-with-coding-agents)
 
 ## What it does
@@ -260,9 +260,7 @@ checks that none sees a note before its reveal or another team's retros,
 and that none changes what their role doesn't let them; `bun run fuzz`
 sends 5,000 of them from a new seed. `bun run mutate` plants small bugs in
 the `src/` lines a change touches and lists the ones no test catches, as
-the framework's `docs/mutation.md` explains. On GitHub,
-`.github/workflows/check.yml` runs `check` for each push to `main` and each
-pull request.
+the framework's `docs/mutation.md` explains.
 
 ### The fence for coding agents
 
@@ -529,39 +527,6 @@ This repository's `wrangler.jsonc` routes the Worker to `retro.web.popcomputer.c
 popcomputer.com's Cloudflare zone, and sets `APP_URL` to that address. To
 deploy a copy of your own, remove its `routes`, or name a domain on your own
 account, and set `APP_URL` in its `vars` to the address the copy is served at.
-
-## Deploying from GitHub
-
-`.github/workflows/deploy.yml` runs `bun run check`, then `bun run deploy`,
-for each push to `main`, once the repository has two secrets for it. Until
-then it skips the deploy and the run still passes, with a note saying the
-secrets are missing. A deploy from GitHub works as one from your computer:
-a new version goes live only once it answers, and a run that stops says why
-in its log. It deploys to the Worker and database named after the app, as a
-deploy from your computer does, and creates them if nothing has been deployed.
-
-1. Create a Cloudflare API token. On the dashboard's
-   [Account API tokens](https://dash.cloudflare.com/?to=/:account/api-tokens)
-   page, select **Create Token**, and start from the **Edit Cloudflare
-   Workers** template. Add the permission **Account**, **D1**, **Edit**,
-   which the template lacks and the migrations need, and limit the token to
-   the account the app deploys to. Create it, and copy the token.
-2. Copy your account ID, the 32 characters after `dash.cloudflare.com/` in
-   the dashboard's address once you're signed in. Cloudflare's
-   [Find account and zone IDs](https://developers.cloudflare.com/fundamentals/account/find-account-and-zone-ids/)
-   shows where else it appears.
-3. In the repository on GitHub, open **Settings**, then **Secrets and
-   variables**, then **Actions**, and add two repository secrets:
-   `CLOUDFLARE_API_TOKEN`, holding the token, and `CLOUDFLARE_ACCOUNT_ID`,
-   holding the account ID.
-
-The next push to `main` deploys it. To deploy without pushing, run the
-Deploy workflow from the repository's **Actions** tab.
-
-These two are GitHub's secrets, for reaching Cloudflare; the app's own, which
-`src/env.ts` declares, stay on Cloudflare. Set one nothing generates once,
-with `bun run secret NAME` from your computer: a deploy from GitHub stops,
-naming it, while it's missing.
 
 ## Upgrading
 

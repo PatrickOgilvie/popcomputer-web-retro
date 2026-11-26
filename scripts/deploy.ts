@@ -96,7 +96,7 @@ export function readLogin(stdout: string): 'logged-in' | 'logged-out' | undefine
  */
 export function loginAdvice(rerun: string, ci = process.env.CI === 'true'): string {
   if (ci) {
-    return `Wrangler has no Cloudflare login here. Set the CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID secrets, as the README's "Deploying from GitHub" says, then run ${rerun} again.`
+    return `Wrangler has no Cloudflare login here. Set CLOUDFLARE_API_TOKEN to a Cloudflare API token made from the Edit Cloudflare Workers template, with Account, D1, Edit added, and CLOUDFLARE_ACCOUNT_ID to the account's ID, then run ${rerun} again.`
   }
   return `Wrangler is not signed in to Cloudflare. Run bun run cloudflare:login, which opens a browser to allow it into your Cloudflare account, then run ${rerun} again.`
 }
@@ -110,7 +110,7 @@ export function loginProblem(rerun: string): string | undefined {
   const token =
     process.env.CLOUDFLARE_API_TOKEN === undefined
       ? ''
-      : ' Check CLOUDFLARE_API_TOKEN is current and has the permissions the README\'s "Deploying from GitHub" lists.'
+      : ' Check CLOUDFLARE_API_TOKEN is current and has the Edit Cloudflare Workers template\'s permissions, with Account, D1, Edit added.'
   return failure(whoami, `Could not check the Cloudflare login; wrangler says why above.${token}`)
 }
 

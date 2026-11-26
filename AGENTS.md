@@ -136,12 +136,6 @@ a terminal, until stopped; requests to a preview's address don't show there.
 To undo a deploy, `bun run rollback` puts the one before back, without asking
 when there's no terminal; the database keeps its migrations.
 
-`.github/workflows/check.yml` runs `bun run check` on GitHub, and
-`.github/workflows/deploy.yml` runs `bun run deploy` for each push to `main`
-once the repository has the `CLOUDFLARE_API_TOKEN` and
-`CLOUDFLARE_ACCOUNT_ID` secrets; the README's "Deploying from GitHub" says
-how the user adds them.
-
 ## The fence
 
 The checks below hold whether or not a paragraph is read:
